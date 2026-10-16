@@ -27,34 +27,43 @@ def hex2rgb(h):
 def rgb2hex(rgb):
     return '#{:02X}{:02X}{:02X}'.format(int(np.clip(rgb[0], 0, 255)), int(np.clip(rgb[1], 0, 255)), int(np.clip(rgb[2], 0, 255)))
 
-def clean_fake_checkerboard(img_rgba):
-    """Detects and strips fake PNG alternating grey/white checkerboard backgrounds"""
+def clean_fake_checkerboard(img_rgba, make_transparent=False):
+    """Detects and strips genuine fake-PNG alternating grey/white checkerboard backgrounds without affecting solid white backgrounds"""
     w, h = img_rgba.size
+    if w < 64 or h < 64:
+        return img_rgba
+    
+    tile_size = 16
     pixels = img_rgba.load()
-    sample_pixels = [
-        pixels[0, 0], pixels[w - 1, 0], pixels[0, h - 1], pixels[w - 1, h - 1],
-        pixels[min(16, w-1), min(16, h-1)], pixels[max(0, w - 16), min(16, h-1)],
-        pixels[min(16, w-1), max(0, h - 16)], pixels[max(0, w - 16), max(0, h - 16)]
-    ]
-    white_count = 0
-    grey_count = 0
-    for c in sample_pixels:
-        r, g, b = c[:3]
-        if r > 235 and g > 235 and b > 235:
-            white_count += 1
-        elif abs(int(r) - int(g)) < 8 and abs(int(g) - int(b)) < 8 and 180 <= r <= 235:
-            grey_count += 1
+    try:
+        p00 = pixels[4, 4][:3]
+        p10 = pixels[4 + tile_size, 4][:3]
+        p01 = pixels[4, 4 + tile_size][:3]
+        p11 = pixels[4 + tile_size, 4 + tile_size][:3]
 
-    # Genuine checkerboard MUST have alternating white AND grey tiles!
-    # A solid white background has grey_count == 0 and must NEVER be stripped!
-    if white_count >= 2 and grey_count >= 2:
-        for y in range(h):
-            for x in range(w):
-                r, g, b, a = pixels[x, y][:4]
-                is_white = r > 235 and g > 235 and b > 235
-                is_grey = abs(int(r) - int(g)) < 8 and abs(int(g) - int(b)) < 8 and 180 <= r <= 235
-                if is_white or is_grey:
-                    pixels[x, y] = (r, g, b, 0)
+        def is_white_px(c):
+            return c[0] > 240 and c[1] > 240 and c[2] > 240
+        def is_grey_px(c):
+            return abs(int(c[0]) - int(c[1])) < 6 and abs(int(c[1]) - int(c[2])) < 6 and 190 <= c[0] <= 225
+
+        has_checker = (
+            (is_white_px(p00) and is_grey_px(p10) and is_grey_px(p01) and is_white_px(p11)) or
+            (is_grey_px(p00) and is_white_px(p10) and is_white_px(p01) and is_grey_px(p11))
+        )
+
+        if has_checker:
+            p_other0 = pixels[w - 4 - tile_size, 4][:3]
+            p_other1 = pixels[w - 4, 4][:3]
+            if (is_white_px(p_other0) and is_grey_px(p_other1)) or (is_grey_px(p_other0) and is_white_px(p_other1)):
+                target_alpha = 0 if make_transparent else 255
+                replacement = (255, 255, 255, target_alpha)
+                for y in range(h):
+                    for x in range(w):
+                        c = pixels[x, y]
+                        if is_white_px(c) or is_grey_px(c):
+                            pixels[x, y] = replacement
+    except Exception:
+        pass
     return img_rgba
 
 def is_monochrome_image(img):
@@ -64,7 +73,6 @@ def is_monochrome_image(img):
     color_pixels = np.sum(diff > 25)
     total_pixels = arr.shape[0] * arr.shape[1]
     color_pct = (color_pixels / total_pixels) * 100
-    # If even 0.2% of pixels have noticeable color, it is DEFINITELY a COLOR image!
     if color_pct > 0.2:
         return False
     return float(np.mean(diff < 18)) > 0.99
@@ -74,32 +82,38 @@ def vectorize_pro(input_path, output_svg_path, options=None):
         options = {}
 
     orig_img = Image.open(input_path)
+    transparent_bg = options.get('transparent_bg', False)
+    
     if options.get('clean_checkerboard', True):
-        orig_img = clean_fake_checkerboard(orig_img.convert('RGBA'))
+        orig_img = clean_fake_checkerboard(orig_img.convert('RGBA'), make_transparent=transparent_bg)
 
     orig_w, orig_h = orig_img.size
-    is_mono = is_monochrome_image(orig_img)
-    preset = options.get('preset', 'auto')
-    transparent_bg = options.get('transparent_bg', False)
 
-    # Adaptive super-sampling: low-resolution web thumbnails (<500px) need 3x Lanczos
-    # so discrete pixel staircases dissolve completely into continuous sub-pixel coordinates
-    if max(orig_w, orig_h) < 500:
-        scale = 3
-    elif max(orig_w, orig_h) < 1400:
-        scale = 2
+    # CRITICAL: Always composite transparent/RGBA images onto clean white
+    # so transparent pixels NEVER turn into black (0, 0, 0)!
+    if orig_img.mode in ('RGBA', 'LA') or (orig_img.mode == 'P' and 'transparency' in orig_img.info):
+        rgba = orig_img.convert('RGBA')
+        bg = Image.new('RGBA', rgba.size, (255, 255, 255, 255))
+        alpha_composite = Image.alpha_composite(bg, rgba)
+        clean_rgb_img = alpha_composite.convert('RGB')
     else:
-        scale = 1
-    
+        clean_rgb_img = orig_img.convert('RGB')
+
+    is_mono = is_monochrome_image(clean_rgb_img)
+    preset = options.get('preset', 'auto')
+
+    # Adaptive super-sampling:
+    # Upscale low-res thumbnails (<600px) so Bézier splines have sub-pixel resolution.
+    # Keep large images (>=600px) at 1x to avoid magnifying JPEG compression noise!
+    scale = 2 if max(orig_w, orig_h) < 600 else 1
     tw = orig_w * scale
     th = orig_h * scale
 
     # -------------------------------------------------------------
     # CASE A: MONOCHROME LINE ART / SKETCH / STAMP / B&W DRAWING
     # -------------------------------------------------------------
-    # Only route to Case A if genuinely monochrome or explicitly requested B&W preset
-    if (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color', 'clipart', 'logo')) or preset in ('cut_vinyl', 'silhouette', 'line_art'):
-        gray = orig_img.convert('L')
+    if (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color')) or preset in ('cut_vinyl', 'silhouette', 'line_art'):
+        gray = clean_rgb_img.convert('L')
         
         if scale > 1:
             gray_up = np.array(gray.resize((tw, th), Image.Resampling.LANCZOS))
@@ -108,21 +122,18 @@ def vectorize_pro(input_path, output_svg_path, options=None):
 
         # Anti-aliased sub-pixel Gaussian pre-filter dissolves discrete pixel staircases into continuous gradient
         denoised = cv2.GaussianBlur(gray_up, (7, 7), 2.0)
-        
-        # Otsu thresholding cleanly separates dark strokes from background with smooth continuous contours
         _, thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
         temp_thresh_path = input_path + "_thresh.png"
         cv2.imwrite(temp_thresh_path, thresh)
 
-        filter_speckle = int(options.get('filter_speckle', 8))
+        filter_speckle = int(options.get('filter_speckle', 12))
         corner_threshold = int(options.get('corner_threshold', 80))
-        length_threshold = float(options.get('length_threshold', 7.0))
+        length_threshold = float(options.get('length_threshold', 7.5))
         max_iterations = int(options.get('max_iterations', 30))
         splice_threshold = int(options.get('splice_threshold', 55))
         path_precision = int(options.get('path_precision', 2))
         
-        # Binary spline tracing: gives PURE SOLID BLACK #000000 strokes with silky smooth cubic Béziers
         vtracer.convert_image_to_svg_py(
             temp_thresh_path,
             output_svg_path,
@@ -150,7 +161,7 @@ def vectorize_pro(input_path, output_svg_path, options=None):
 
         # Clean SVG root tag (eliminate duplicate width/height attributes)
         svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
-        if not transparent_bg and np.mean(gray_up > 200) > 0.4:
+        if not transparent_bg:
             svg_root += f'\n<rect width="100%" height="100%" fill="#ffffff"/>'
         svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
 
@@ -181,75 +192,41 @@ def vectorize_pro(input_path, output_svg_path, options=None):
     # CASE B: FULL COLOR ARTWORK / ILLUSTRATION / PHOTO / LOGO
     # -------------------------------------------------------------
     if scale > 1:
-        img_up = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+        img_up = clean_rgb_img.resize((tw, th), Image.Resampling.LANCZOS)
     else:
-        img_up = orig_img
+        img_up = clean_rgb_img
 
-    arr = np.array(img_up.convert('RGB'))
+    arr = np.array(img_up)
     bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
-    # Sub-pixel anti-aliasing pre-filter + bilateral edge-preserving denoiser
-    denoise_level = options.get('denoise_level', 'low')
-    if denoise_level == 'none':
-        denoised = bgr
-    elif denoise_level == 'high':
-        smooth = cv2.GaussianBlur(bgr, (7, 7), 1.5)
-        denoised = cv2.bilateralFilter(smooth, 9, 60, 60)
-    elif denoise_level == 'medium':
-        smooth = cv2.GaussianBlur(bgr, (5, 5), 1.2)
-        denoised = cv2.bilateralFilter(smooth, 7, 50, 50)
-    else:
-        smooth = cv2.GaussianBlur(bgr, (5, 5), 1.2)
-        denoised = cv2.bilateralFilter(smooth, 7, 45, 45)
-
-    # Inspect color histogram to distinguish flat graphics/logos from continuous-tone photos
-    small = cv2.resize(denoised, (100, 100))
-    unique_colors_small = len(np.unique(small.reshape(-1, 3), axis=0))
-    is_flat_graphic = (unique_colors_small < 1500) or (preset in ('logo', 'clipart', 'cut_vinyl'))
+    # Master AI Denoising:
+    # 1. Edge-preserving bilateral filter removes JPEG mosquito noise, ringing, and DCT block artifacts
+    # 2. Subtle median filter removes isolated compression specks and creates silky smooth contours
+    denoised = cv2.bilateralFilter(bgr, 9, 75, 75)
+    smooth_bgr = cv2.medianBlur(denoised, 3)
 
     colors_limit = int(options.get('colors_limit', 0))
-    palette_centers = []
-
-    if colors_limit > 0 or is_flat_graphic:
-        # Snap anti-aliased edge halos to dominant colors to prevent 1000s of jagged edge fringes
-        k = colors_limit if colors_limit > 0 else (16 if unique_colors_small < 800 else 24)
-        pixels = denoised.reshape((-1, 3)).astype(np.float32)
+    if colors_limit > 0:
+        pixels = smooth_bgr.reshape((-1, 3)).astype(np.float32)
         sample_size = min(35000, len(pixels))
         sample_indices = np.random.choice(len(pixels), sample_size, replace=False)
-        sample_pixels = pixels[sample_indices]
-
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 15, 0.2)
-        _, _, centers = cv2.kmeans(sample_pixels, k, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
+        _, _, centers = cv2.kmeans(pixels[sample_indices], colors_limit, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
         centers = np.uint8(centers)
-        palette_centers = [rgb2hex(cv2.cvtColor(np.uint8([[c]]), cv2.COLOR_BGR2RGB)[0][0]) for c in centers]
-
         distances = np.linalg.norm(pixels[:, None, :] - centers[None, :, :].astype(np.float32), axis=2)
         labels = np.argmin(distances, axis=1)
-        quantized_bgr = centers[labels].reshape(denoised.shape)
-        final_bgr = quantized_bgr
-
-        default_color_prec = 6
-        default_layer_diff = 24
-        default_len_thresh = 7.0
-        default_corner_thresh = 75
-        default_filter_speckle = 8
+        final_bgr = centers[labels].reshape(smooth_bgr.shape)
     else:
-        # Full fidelity photographic direct vectorization
-        final_bgr = denoised
-        default_color_prec = 7
-        default_layer_diff = 16
-        default_len_thresh = 5.0
-        default_corner_thresh = 75
-        default_filter_speckle = 6
+        final_bgr = smooth_bgr
 
     temp_pre_path = input_path + "_color_pre.png"
     cv2.imwrite(temp_pre_path, final_bgr)
 
-    filter_speckle = int(options.get('filter_speckle', default_filter_speckle))
-    color_precision = int(options.get('color_precision', default_color_prec))
-    layer_difference = int(options.get('layer_difference', default_layer_diff))
-    corner_threshold = int(options.get('corner_threshold', default_corner_thresh))
-    length_threshold = float(options.get('length_threshold', default_len_thresh))
+    filter_speckle = int(options.get('filter_speckle', 16))
+    color_precision = int(options.get('color_precision', 6))
+    layer_difference = int(options.get('layer_difference', 30))
+    corner_threshold = int(options.get('corner_threshold', 80))
+    length_threshold = float(options.get('length_threshold', 8.0))
     max_iterations = int(options.get('max_iterations', 30))
     splice_threshold = int(options.get('splice_threshold', 55))
     path_precision = int(options.get('path_precision', 2))
@@ -279,18 +256,14 @@ def vectorize_pro(input_path, output_svg_path, options=None):
     with open(output_svg_path, 'r', encoding='utf-8', errors='ignore') as f:
         svg_content = f.read()
 
-    # Exact palette center snapping if quantized
-    if palette_centers:
-        fills = list(set(re.findall(r'fill="([^"]+)"', svg_content)))
-        if fills:
-            target_rgbs = np.array([hex2rgb(h) for h in palette_centers], dtype=np.float32)
-            for f_col in fills:
-                if f_col.lower() in ('none', 'transparent'):
-                    continue
-                f_rgb = np.array(hex2rgb(f_col), dtype=np.float32)
-                dists = np.linalg.norm(target_rgbs - f_rgb, axis=1)
-                best_idx = np.argmin(dists)
-                svg_content = svg_content.replace(f'fill="{f_col}"', f'fill="{palette_centers[best_idx]}"')
+    # Transparent background handling:
+    if transparent_bg:
+        first_path_match = re.search(r'<path[^>]*d="([^"]*)"[^>]*fill="([^"]*)"[^>]*>', svg_content)
+        if first_path_match:
+            bg_col = first_path_match.group(2).upper()
+            d_val = first_path_match.group(1)
+            if bg_col in ('#FFFFFF', '#FEFEFE', '#FAFBFC', '#F5F4F2', '#FDFDFD', '#F9F9F9'):
+                svg_content = svg_content.replace(first_path_match.group(0), '', 1)
 
     # Clean SVG root tag (ensures viewBox matches traced tw, th exactly so 0% of art is clipped)
     svg_content = re.sub(
