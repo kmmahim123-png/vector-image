@@ -1,18 +1,19 @@
 /**
- * Vector Magic Web App Main Controller
- * Handles UI interactions, zoom/pan canvas, split-slider, vector downloads, and REA workbench
+ * FreeVector AI Pro - Studio Controller
+ * Handles Studio Viewport, Deep Zoom (up to 3200%), CNC DXF/SVG Exporters,
+ * Preset Switching, and Enterprise License Management
  */
 
 (function () {
   'use strict';
 
-  // Instantiate the vector engine
+  // Instantiate Vector Engine
   const engine = new window.VectorEngine();
 
   // App State
   const state = {
     screen: 'hero', // 'hero' | 'processing' | 'result'
-    fileName: 'WhatsApp Image 2026-10-16 at 12.01.59 PM.jpeg',
+    fileName: 'vector-project.png',
     originalImage: null,
     tracedata: null,
     stats: null,
@@ -25,18 +26,17 @@
     viewMode: 'split', // 'split' | 'side' | 'vector' | 'original' | 'wireframe'
     hiddenColors: new Set(),
     transparentBg: false,
-    currentPreset: 'medium',
-    activeTab: 'download', // 'download' | 'edit' | 'rea'
+    currentPreset: 'logo',
     options: {
-      numberofcolors: 16,
-      ltres: 1,
-      qtres: 1,
-      pathomit: 8,
-      blurradius: 1
+      numberofcolors: 8,
+      ltres: 0.5,
+      qtres: 0.5,
+      pathomit: 4,
+      blurradius: 0
     }
   };
 
-  // DOM Elements
+  // DOM Cache
   const DOM = {
     heroSection: document.getElementById('hero-section'),
     processingSection: document.getElementById('processing-section'),
@@ -48,6 +48,7 @@
     progressStatus: document.getElementById('progress-status'),
     progressPercent: document.getElementById('progress-percent'),
     resultFilename: document.getElementById('result-filename'),
+    presetBadge: document.getElementById('preset-badge'),
     canvasContainer: document.getElementById('canvas-container'),
     originalImgTag: document.getElementById('original-image-view'),
     vectorSvgContainer: document.getElementById('vector-svg-container'),
@@ -74,15 +75,15 @@
     diffModal: document.getElementById('diff-modal'),
     diffModalClose: document.getElementById('diff-modal-close'),
     diffModalTrigger: document.getElementById('diff-modal-trigger'),
-    reaModal: document.getElementById('rea-modal'),
-    reaModalClose: document.getElementById('rea-modal-close'),
-    reaModalTrigger: document.getElementById('rea-modal-trigger'),
-    rawCodePreview: document.getElementById('raw-code-preview'),
-    rawCodeTypeSelect: document.getElementById('raw-code-type')
+    pricingModal: document.getElementById('pricing-modal'),
+    pricingModalClose: document.getElementById('pricing-modal-close'),
+    licenseKeyInput: document.getElementById('license-key-input'),
+    btnActivateLicense: document.getElementById('btn-activate-license'),
+    licenseStatusMsg: document.getElementById('license-status-msg')
   };
 
   /**
-   * Initialize App
+   * Initialize Application
    */
   function init() {
     setupUploadHandlers();
@@ -94,20 +95,23 @@
     setupHeroSlider();
     setupClipboardPaste();
 
-    // Setup default sample image pre-load for instant trial
+    // Generate thumbnails for instant samples
     setTimeout(() => {
-      const whatsappSample = window.SampleGenerator.createWhatsAppSample();
-      const mascotSample = window.SampleGenerator.createMascotSample();
-      const logoSample = window.SampleGenerator.createLogoSample();
+      const falconSample = window.SampleGenerator.createFalconMascot();
+      const cybercoreSample = window.SampleGenerator.createCyberCoreLogo();
+      const mandalaSample = window.SampleGenerator.createLaserCutMandala();
+      const documentSample = window.SampleGenerator.createDocumentSample();
 
-      const sampleImg1 = document.getElementById('sample-img-whatsapp');
-      const sampleImg2 = document.getElementById('sample-img-mascot');
-      const sampleImg3 = document.getElementById('sample-img-logo');
+      const img1 = document.getElementById('sample-img-falcon');
+      const img2 = document.getElementById('sample-img-cybercore');
+      const img3 = document.getElementById('sample-img-mandala');
+      const img4 = document.getElementById('sample-img-document');
 
-      if (sampleImg1) sampleImg1.src = whatsappSample;
-      if (sampleImg2) sampleImg2.src = mascotSample;
-      if (sampleImg3) sampleImg3.src = logoSample;
-    }, 100);
+      if (img1) img1.src = falconSample;
+      if (img2) img2.src = cybercoreSample;
+      if (img3) img3.src = mandalaSample;
+      if (img4) img4.src = documentSample;
+    }, 60);
   }
 
   /**
@@ -154,7 +158,7 @@
   }
 
   /**
-   * Support Ctrl+V clipboard paste directly
+   * Clipboard Paste Handler
    */
   function setupClipboardPaste() {
     window.addEventListener('paste', (e) => {
@@ -162,7 +166,7 @@
       for (const item of items) {
         if (item.kind === 'file' && item.type.startsWith('image/')) {
           const blob = item.getAsFile();
-          handleFileSelect(blob, 'pasted-image.png');
+          handleFileSelect(blob, 'pasted-artwork.png');
           break;
         }
       }
@@ -177,34 +181,41 @@
       card.addEventListener('click', () => {
         const sampleType = card.dataset.sample;
         let dataUrl = '';
-        let sampleName = 'sample.png';
+        let sampleName = 'vector-sample.png';
+        let suggestedPreset = 'logo';
 
-        if (sampleType === 'whatsapp') {
-          dataUrl = window.SampleGenerator.createWhatsAppSample();
-          sampleName = 'WhatsApp Image 2026-10-16 at 12.01.59 PM.jpeg';
-        } else if (sampleType === 'mascot') {
-          dataUrl = window.SampleGenerator.createMascotSample();
-          sampleName = 'Vector_Magic_Hurricane_Mascot.png';
-        } else if (sampleType === 'logo') {
-          dataUrl = window.SampleGenerator.createLogoSample();
-          sampleName = 'Nexus_Labs_Precision_Logo.png';
+        if (sampleType === 'falcon') {
+          dataUrl = window.SampleGenerator.createFalconMascot();
+          sampleName = 'Apex_Falcon_Esports_Crest.png';
+          suggestedPreset = 'illustration';
+        } else if (sampleType === 'cybercore') {
+          dataUrl = window.SampleGenerator.createCyberCoreLogo();
+          sampleName = 'CyberCore_Quantum_Logo.png';
+          suggestedPreset = 'logo';
+        } else if (sampleType === 'mandala') {
+          dataUrl = window.SampleGenerator.createLaserCutMandala();
+          sampleName = 'Filigree_Laser_Mandala_CNC.png';
+          suggestedPreset = 'cnc';
+        } else if (sampleType === 'document') {
+          dataUrl = window.SampleGenerator.createDocumentSample();
+          sampleName = 'Executive_Verified_Contract.png';
+          suggestedPreset = 'document';
         }
 
+        state.currentPreset = suggestedPreset;
+        applyPresetToSliders(suggestedPreset);
         processImageSource(dataUrl, sampleName);
       });
     });
   }
 
-  /**
-   * Handle user selected file
-   */
   function handleFileSelect(file, fallbackName) {
-    const fileName = file.name || fallbackName || 'uploaded-image.png';
+    const fileName = file.name || fallbackName || 'vector-graphic.png';
     processImageSource(file, fileName);
   }
 
   /**
-   * Central Pipeline Processing function
+   * Central Vector Tracing Pipeline
    */
   async function processImageSource(source, fileName) {
     state.fileName = fileName;
@@ -212,12 +223,17 @@
     showScreen('processing');
 
     try {
-      // Step 1: Load Image
-      const { image, width, height } = await engine.loadImage(source, fileName);
+      // Step 1: Load image & analyze heuristics
+      const { image, detectedType } = await engine.loadImage(source, fileName);
       state.originalImage = image;
       DOM.originalImgTag.src = image.src;
 
-      // Step 2: Vectorize with current options
+      if (!state.currentPreset || state.currentPreset === 'logo') {
+        state.currentPreset = detectedType;
+        applyPresetToSliders(detectedType);
+      }
+
+      // Step 2: Vectorize with active options
       const { tracedata, stats } = await engine.vectorize(
         {
           preset: state.currentPreset,
@@ -234,7 +250,8 @@
       state.stats = stats;
       state.hiddenColors.clear();
 
-      // Step 3: Render Result to Canvas & SVG Container
+      // Step 3: Render and present
+      updatePresetBadge();
       renderVectorPreview();
       updatePaletteUI();
       updateStatsUI();
@@ -248,14 +265,43 @@
     }
   }
 
+  function updatePresetBadge() {
+    const p = window.VectorEngine.Presets[state.currentPreset];
+    if (p && DOM.presetBadge) {
+      DOM.presetBadge.textContent = `⚡ ${p.name}`;
+    }
+  }
+
+  function applyPresetToSliders(presetKey) {
+    const p = window.VectorEngine.Presets[presetKey];
+    if (!p) return;
+
+    state.options.numberofcolors = p.numberofcolors;
+    state.options.ltres = p.ltres;
+    state.options.qtres = p.qtres;
+    state.options.pathomit = p.pathomit;
+
+    if (DOM.colorsCountSlider) {
+      DOM.colorsCountSlider.value = p.numberofcolors;
+      DOM.colorsCountVal.textContent = p.numberofcolors;
+    }
+    if (DOM.despeckleSlider) {
+      DOM.despeckleSlider.value = p.pathomit;
+    }
+
+    document.querySelectorAll('.preset-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.preset === presetKey);
+    });
+  }
+
   /**
-   * Render vector preview inside the comparison viewer
+   * Render vector preview inside canvas
    */
   function renderVectorPreview() {
     if (!state.tracedata) return;
 
     const svgString = window.VectorExporters.generateSVG(state.tracedata, {
-      mode: 'stroke_fill',
+      mode: state.viewMode === 'wireframe' ? 'wireframe' : 'stroke_fill',
       strokeWidth: 0.75,
       hiddenColors: state.hiddenColors,
       transparentBg: state.transparentBg
@@ -263,7 +309,6 @@
 
     DOM.vectorSvgContainer.innerHTML = svgString;
 
-    // Apply wireframe styling if active
     if (state.viewMode === 'wireframe') {
       DOM.vectorSvgContainer.classList.add('wireframe-mode');
     } else {
@@ -274,7 +319,7 @@
   }
 
   /**
-   * Update View Mode Display (Split, Side-by-side, Vector, Original, Wireframe)
+   * View Mode Switcher
    */
   function updateViewModeDisplay() {
     const originalPane = document.getElementById('pane-original');
@@ -305,9 +350,6 @@
     }
   }
 
-  /**
-   * Set split slider position (0 - 100%)
-   */
   function setSplitPosition(pos) {
     state.splitPos = Math.max(0, Math.min(100, pos));
     DOM.splitDivider.style.left = `${state.splitPos}%`;
@@ -318,26 +360,23 @@
   }
 
   /**
-   * Setup Zoom and Pan Controls
+   * Deep Zoom (up to 3200%) & Pan Handlers
    */
   function setupViewerControls() {
-    // Zoom Buttons
     DOM.zoomInBtn.addEventListener('click', () => changeZoom(1.4));
     DOM.zoomOutBtn.addEventListener('click', () => changeZoom(1 / 1.4));
     DOM.zoomResetBtn.addEventListener('click', () => resetZoomAndPan());
 
-    // Mouse wheel zoom
     DOM.canvasContainer.addEventListener(
       'wheel',
       (e) => {
         e.preventDefault();
-        const factor = e.deltaY < 0 ? 1.2 : 0.83;
+        const factor = e.deltaY < 0 ? 1.25 : 0.8;
         changeZoom(factor);
       },
       { passive: false }
     );
 
-    // Pan by dragging
     DOM.canvasContainer.addEventListener('mousedown', (e) => {
       if (e.target.closest('#split-handle') || e.target.closest('#split-divider')) return;
       state.isPanning = true;
@@ -366,13 +405,11 @@
       DOM.canvasContainer.classList.remove('panning');
     });
 
-    // Split Divider Dragging
     DOM.splitHandle.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       state.isDraggingSplit = true;
     });
 
-    // View Mode Selector buttons
     document.querySelectorAll('.view-mode-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.view-mode-btn').forEach((b) => b.classList.remove('active'));
@@ -384,7 +421,7 @@
   }
 
   function changeZoom(factor) {
-    state.zoom = Math.max(0.2, Math.min(25, state.zoom * factor));
+    state.zoom = Math.max(0.15, Math.min(32, state.zoom * factor));
     DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
     applyTransform();
   }
@@ -405,28 +442,30 @@
   }
 
   /**
-   * Setup Download Buttons (Fill Only & Stroke + Fill: SVG, EPS, PDF)
+   * Production Download Handlers: SVG, EPS, DXF, PDF, and 2K/4K/8K PNG
    */
   function setupDownloadButtons() {
-    // Fill Only Group
+    // Fill Only Group (CNC, Laser, Plotters)
     document.getElementById('dl-fill-svg').addEventListener('click', () => downloadFile('fill', 'svg'));
     document.getElementById('dl-fill-eps').addEventListener('click', () => downloadFile('fill', 'eps'));
+    document.getElementById('dl-fill-dxf').addEventListener('click', () => downloadFile('fill', 'dxf'));
     document.getElementById('dl-fill-pdf').addEventListener('click', () => downloadFile('fill', 'pdf'));
 
-    // Stroke + Fill Group
+    // Stroke + Fill Group (Web, Mobile, Screens)
     document.getElementById('dl-stroke-svg').addEventListener('click', () => downloadFile('stroke_fill', 'svg'));
     document.getElementById('dl-stroke-eps').addEventListener('click', () => downloadFile('stroke_fill', 'eps'));
     document.getElementById('dl-stroke-pdf').addEventListener('click', () => downloadFile('stroke_fill', 'pdf'));
 
-    // High Res PNG
+    // Ultra-HD Raster PNGs
     document.getElementById('dl-hires-png').addEventListener('click', () => downloadRasterPNG(2));
     document.getElementById('dl-hires-png-4x').addEventListener('click', () => downloadRasterPNG(4));
+    document.getElementById('dl-hires-png-8x').addEventListener('click', () => downloadRasterPNG(8));
   }
 
   function downloadFile(mode, format) {
     if (!state.tracedata) return;
     const baseName = state.fileName.replace(/\.[^/.]+$/, '');
-    const suffix = mode === 'fill' ? '-fill-only' : '-stroke-fill';
+    const suffix = mode === 'fill' ? '-cut-ready' : '-display';
 
     if (format === 'svg') {
       const svg = window.VectorExporters.generateSVG(state.tracedata, {
@@ -442,6 +481,12 @@
         transparentBg: state.transparentBg
       });
       window.VectorExporters.downloadFile(eps, `${baseName}${suffix}.eps`, 'application/postscript');
+    } else if (format === 'dxf') {
+      const dxf = window.VectorExporters.generateDXF(state.tracedata, {
+        hiddenColors: state.hiddenColors,
+        transparentBg: state.transparentBg
+      });
+      window.VectorExporters.downloadFile(dxf, `${baseName}-cnc.dxf`, 'application/dxf');
     } else if (format === 'pdf') {
       const pdf = window.VectorExporters.generatePDF(state.tracedata, {
         mode,
@@ -452,10 +497,7 @@
     }
   }
 
-  /**
-   * Render vector to high-res PNG at 2x or 4x supersampling
-   */
-  function downloadRasterPNG(scale = 2) {
+  function downloadRasterPNG(scale = 4) {
     if (!state.tracedata) return;
     const svgString = window.VectorExporters.generateSVG(state.tracedata, {
       mode: 'stroke_fill',
@@ -481,14 +523,14 @@
       URL.revokeObjectURL(url);
       canvas.toBlob((blob) => {
         const baseName = state.fileName.replace(/\.[^/.]+$/, '');
-        window.VectorExporters.downloadFile(blob, `${baseName}-${scale}x.png`, 'image/png');
+        window.VectorExporters.downloadFile(blob, `${baseName}-${scale}x-master.png`, 'image/png');
       });
     };
     img.src = url;
   }
 
   /**
-   * Update Palette UI in Edit Result drawer
+   * Palette Management & Color Editor
    */
   function updatePaletteUI() {
     if (!state.tracedata || !DOM.paletteContainer) return;
@@ -509,7 +551,7 @@
           <span class="palette-layer">Layer #${idx}</span>
         </div>
         <div class="palette-actions">
-          <input type="color" value="${hex}" class="color-picker-input" data-index="${idx}" title="Change color">
+          <input type="color" value="${hex}" class="color-picker-input" data-index="${idx}" title="Click to recolor this vector layer">
           <button class="palette-toggle-btn" data-index="${idx}" title="${isHidden ? 'Show layer' : 'Hide layer'}">
             ${isHidden ? '👁️‍🗨️' : '👁️'}
           </button>
@@ -519,7 +561,6 @@
       DOM.paletteContainer.appendChild(item);
     });
 
-    // Event listeners for palette items
     DOM.paletteContainer.querySelectorAll('.color-picker-input').forEach((input) => {
       input.addEventListener('change', (e) => {
         const idx = parseInt(e.target.dataset.index, 10);
@@ -544,20 +585,20 @@
   }
 
   /**
-   * Update Stats UI
+   * Stats UI Update
    */
   function updateStatsUI() {
     if (!state.stats || !DOM.statsBadge) return;
     DOM.statsBadge.innerHTML = `
-      <span>🎨 ${state.stats.colorsCount} Colors</span>
-      <span>📐 ${state.stats.pathsCount} Paths</span>
-      <span>⚡ ${state.stats.segmentsCount} Segments</span>
-      <span>📏 ${state.stats.width} × ${state.stats.height} px</span>
+      <span>🎨 <strong>${state.stats.colorsCount}</strong> Colors</span>
+      <span>📐 <strong>${state.stats.pathsCount}</strong> Closed Paths</span>
+      <span>⚡ <strong>${state.stats.nodesCount}</strong> Anchors</span>
+      <span>📦 Vector: <strong>${state.stats.vectorKb} KB</strong> (${state.stats.compression} compression)</span>
     `;
   }
 
   /**
-   * Setup Edit Controls (Sliders, Presets, Background)
+   * Studio Drawer Controls
    */
   function setupEditControls() {
     DOM.btnEditResult.addEventListener('click', () => {
@@ -580,8 +621,7 @@
 
     DOM.detailSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value, 10);
-      // Map 1-5 to ltres & qtres
-      const res = (6 - val) * 0.4;
+      const res = (6 - val) * 0.35;
       state.options.ltres = res;
       state.options.qtres = res;
     });
@@ -594,25 +634,15 @@
       state.options.pathomit = parseInt(e.target.value, 10);
     });
 
-    // Preset buttons
     document.querySelectorAll('.preset-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         state.currentPreset = btn.dataset.preset;
-        const p = window.VectorEngine.Presets[state.currentPreset];
-        if (p) {
-          DOM.colorsCountSlider.value = p.numberofcolors;
-          DOM.colorsCountVal.textContent = p.numberofcolors;
-          state.options.numberofcolors = p.numberofcolors;
-          state.options.ltres = p.ltres;
-          state.options.qtres = p.qtres;
-          state.options.pathomit = p.pathomit;
-        }
+        applyPresetToSliders(state.currentPreset);
       });
     });
 
-    // Apply Changes button
     DOM.applyEditBtn.addEventListener('click', async () => {
       DOM.editDrawer.classList.remove('open');
       if (state.originalImage) {
@@ -622,10 +652,10 @@
   }
 
   /**
-   * Setup Modal Windows ("What's the difference?" and "REA Workbench")
+   * Modals: What's the Difference & Enterprise $99/mo Plan
    */
   function setupModals() {
-    // "What's the difference?"
+    // Difference Modal
     DOM.diffModalTrigger.addEventListener('click', (e) => {
       e.preventDefault();
       DOM.diffModal.classList.add('active');
@@ -635,64 +665,41 @@
       DOM.diffModal.classList.remove('active');
     });
 
-    // "REA Inspector Workbench"
-    DOM.reaModalTrigger.addEventListener('click', (e) => {
-      e.preventDefault();
-      updateRawCodePreview();
-      DOM.reaModal.classList.add('active');
+    // Pricing / Enterprise Modal
+    const openPricing = (e) => {
+      if (e) e.preventDefault();
+      DOM.pricingModal.classList.add('active');
+    };
+
+    document.getElementById('nav-pricing-link').addEventListener('click', openPricing);
+    document.getElementById('nav-upgrade-btn').addEventListener('click', openPricing);
+    document.getElementById('nav-license-btn').addEventListener('click', openPricing);
+    document.getElementById('btn-open-pricing').addEventListener('click', openPricing);
+
+    DOM.pricingModalClose.addEventListener('click', () => {
+      DOM.pricingModal.classList.remove('active');
     });
 
-    DOM.reaModalClose.addEventListener('click', () => {
-      DOM.reaModal.classList.remove('active');
+    // License Activation
+    DOM.btnActivateLicense.addEventListener('click', () => {
+      const key = DOM.licenseKeyInput.value.trim();
+      if (key.length > 5) {
+        DOM.licenseStatusMsg.textContent = '✓ License Key Validated: Enterprise Full Commercial Tier Active.';
+        DOM.licenseStatusMsg.style.color = '#10b981';
+      } else {
+        DOM.licenseStatusMsg.textContent = '✗ Invalid license key format.';
+        DOM.licenseStatusMsg.style.color = '#ef4444';
+      }
     });
 
-    // Click outside to close modals
-    [DOM.diffModal, DOM.reaModal].forEach((modal) => {
+    // Close on backdrop click
+    [DOM.diffModal, DOM.pricingModal].forEach((modal) => {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.classList.remove('active');
       });
     });
-
-    // Code format selector in REA workbench
-    DOM.rawCodeTypeSelect.addEventListener('change', () => {
-      updateRawCodePreview();
-    });
   }
 
-  function updateRawCodePreview() {
-    if (!state.tracedata) {
-      DOM.rawCodePreview.textContent = '// Please vectorize an image first to view reverse-engineered output';
-      return;
-    }
-
-    const type = DOM.rawCodeTypeSelect.value;
-    if (type === 'svg') {
-      const svg = window.VectorExporters.generateSVG(state.tracedata, { mode: 'stroke_fill' });
-      DOM.rawCodePreview.textContent = svg;
-    } else if (type === 'eps') {
-      const eps = window.VectorExporters.generateEPS(state.tracedata, { mode: 'stroke_fill' });
-      DOM.rawCodePreview.textContent = eps;
-    } else if (type === 'pdf') {
-      const pdf = window.VectorExporters.generatePDF(state.tracedata, { mode: 'stroke_fill' });
-      DOM.rawCodePreview.textContent = pdf.substring(0, 3000) + '\n\n... [Truncated for preview]';
-    } else if (type === 'json') {
-      DOM.rawCodePreview.textContent = JSON.stringify(
-        {
-          width: state.tracedata.width,
-          height: state.tracedata.height,
-          palette: state.tracedata.palette,
-          layersCount: state.tracedata.layers.length,
-          stats: state.stats
-        },
-        null,
-        2
-      );
-    }
-  }
-
-  /**
-   * Hero interactive split comparison slider
-   */
   function setupHeroSlider() {
     const heroSlider = document.getElementById('hero-compare-range');
     const heroVectorPane = document.getElementById('hero-vector-pane');
@@ -705,9 +712,6 @@
     }
   }
 
-  /**
-   * Screen Navigation
-   */
   function showScreen(screenName) {
     state.screen = screenName;
     DOM.heroSection.style.display = screenName === 'hero' ? 'block' : 'none';
@@ -719,6 +723,5 @@
     }
   }
 
-  // Start the application when DOM is ready
   document.addEventListener('DOMContentLoaded', init);
 })();

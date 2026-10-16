@@ -1,6 +1,6 @@
 /**
- * Built-in Sample Image Generator for Vector Magic Web App
- * Creates realistic artwork, logos, icons, and document screenshots
+ * FreeVector AI Pro - Original Sample Generator Suite
+ * 100% Copyright-Free, High-Fidelity Test Graphics
  */
 
 (function (window) {
@@ -8,264 +8,347 @@
 
   const SampleGenerator = {
     /**
-     * Sample 1: WhatsApp Message Screenshot (matches user's screenshot)
+     * 1. Apex Falcon Esports Mascot Emblem
      */
-    createWhatsAppSample() {
+    createFalconMascot() {
       const canvas = document.createElement('canvas');
-      canvas.width = 360;
+      canvas.width = 460;
+      canvas.height = 380;
+      const ctx = canvas.getContext('2d');
+
+      // Dark studio backdrop
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, 460, 380);
+
+      ctx.save();
+      ctx.translate(230, 180);
+
+      // Outer Shield / Crest
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.moveTo(0, -140);
+      ctx.lineTo(130, -70);
+      ctx.lineTo(105, 70);
+      ctx.lineTo(0, 140);
+      ctx.lineTo(-105, 70);
+      ctx.lineTo(-130, -70);
+      ctx.closePath();
+      ctx.fill();
+
+      // Deep Navy Core
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(0, -125);
+      ctx.lineTo(115, -60);
+      ctx.lineTo(92, 60);
+      ctx.lineTo(0, 125);
+      ctx.lineTo(-92, 60);
+      ctx.lineTo(-115, -60);
+      ctx.closePath();
+      ctx.fill();
+
+      // Falcon Beak & Head Feathers
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(0, -90);
+      ctx.lineTo(60, -20);
+      ctx.lineTo(80, 20);
+      ctx.lineTo(30, 15);
+      ctx.lineTo(0, 50);
+      ctx.lineTo(-30, 15);
+      ctx.lineTo(-80, 20);
+      ctx.lineTo(-60, -20);
+      ctx.closePath();
+      ctx.fill();
+
+      // Sharp Amber Beak
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(40, 20);
+      ctx.lineTo(0, 75);
+      ctx.lineTo(-40, 20);
+      ctx.closePath();
+      ctx.fill();
+
+      // Beak Split Line
+      ctx.fillStyle = '#b45309';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(25, 25);
+      ctx.lineTo(0, 60);
+      ctx.closePath();
+      ctx.fill();
+
+      // Glowing Cyan Falcon Eyes
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.moveTo(-45, -30);
+      ctx.lineTo(-20, -25);
+      ctx.lineTo(-35, -15);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(45, -30);
+      ctx.lineTo(20, -25);
+      ctx.lineTo(35, -15);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+
+      // Brand Typography
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
+      ctx.textAlign = 'center';
+      ctx.letterSpacing = '3px';
+      ctx.fillText('APEX FALCON', 230, 345);
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.font = '700 11px sans-serif';
+      ctx.letterSpacing = '5px';
+      ctx.fillText('ESPORTS CREST', 230, 365);
+
+      return canvas.toDataURL('image/png');
+    },
+
+    /**
+     * 2. CyberCore Quantum Processor Logo
+     */
+    createCyberCoreLogo() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+
+      // Crisp White Canvas for clean logo testing
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 400, 400);
+
+      ctx.save();
+      ctx.translate(200, 180);
+
+      // Outer Isometric Cube / Hexagon
+      const hexPoints = (r) => {
+        const pts = [];
+        for (let i = 0; i < 6; i++) {
+          const a = (i * Math.PI) / 3 - Math.PI / 6;
+          pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
+        }
+        return pts;
+      };
+
+      const pts = hexPoints(95);
+
+      // Top Face - Electric Violet
+      ctx.fillStyle = '#6366f1';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[1].x, pts[1].y);
+      ctx.lineTo(pts[2].x, pts[2].y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right Face - Deep Indigo
+      ctx.fillStyle = '#4338ca';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(pts[2].x, pts[2].y);
+      ctx.lineTo(pts[3].x, pts[3].y);
+      ctx.lineTo(pts[4].x, pts[4].y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Left Face - Bright Cyber Cyan
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(pts[4].x, pts[4].y);
+      ctx.lineTo(pts[5].x, pts[5].y);
+      ctx.lineTo(pts[0].x, pts[0].y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Inner Core Node Circle
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 24, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(0, 0, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      // Typography
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '900 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.letterSpacing = '1px';
+      ctx.fillText('CYBERCORE', 200, 325);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '700 11px sans-serif';
+      ctx.letterSpacing = '4px';
+      ctx.fillText('QUANTUM HARDWARE', 200, 348);
+
+      return canvas.toDataURL('image/png');
+    },
+
+    /**
+     * 3. Laser-Cut CNC Filigree Mandala (Sign & Cutting Demo)
+     */
+    createLaserCutMandala() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 400, 400);
+
+      ctx.save();
+      ctx.translate(200, 200);
+
+      ctx.fillStyle = '#0f172a';
+
+      // Concentric rings with decorative petals for laser cutting
+      ctx.beginPath();
+      ctx.arc(0, 0, 140, 0, Math.PI * 2);
+      ctx.arc(0, 0, 128, 0, Math.PI * 2, true);
+      ctx.fill();
+
+      // 8 Radial Petals
+      for (let i = 0; i < 8; i++) {
+        ctx.save();
+        ctx.rotate((i * Math.PI) / 4);
+
+        ctx.beginPath();
+        ctx.moveTo(0, -30);
+        ctx.bezierCurveTo(40, -60, 40, -100, 0, -120);
+        ctx.bezierCurveTo(-40, -100, -40, -60, 0, -30);
+        ctx.fill();
+
+        // Cutout hole inside petal
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, -75, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      // Center Rosette
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(0, 0, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      return canvas.toDataURL('image/png');
+    },
+
+    /**
+     * 4. Executive Signature & Invoice Document
+     */
+    createDocumentSample() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 380;
       canvas.height = 480;
       const ctx = canvas.getContext('2d');
 
-      // WhatsApp Chat Background
-      ctx.fillStyle = '#efeae2';
-      ctx.fillRect(0, 0, 360, 480);
+      // Paper ivory background
+      ctx.fillStyle = '#fdfbf7';
+      ctx.fillRect(0, 0, 380, 480);
 
-      // Chat header
-      ctx.fillStyle = '#075e54';
-      ctx.fillRect(0, 0, 360, 56);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
-      ctx.fillText('Delta Health Care', 60, 33);
-      ctx.font = '11px sans-serif';
-      ctx.fillText('online', 60, 47);
-
-      // Contact Avatar
-      ctx.beginPath();
-      ctx.arc(32, 28, 18, 0, Math.PI * 2);
-      ctx.fillStyle = '#128c7e';
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillText('D', 26, 34);
-
-      // Incoming Chat Bubble 1
-      ctx.fillStyle = '#ffffff';
-      this.drawRoundedRect(ctx, 16, 75, 270, 155, 8);
-      ctx.fill();
-
-      // Avatar circle inside bubble
-      ctx.beginPath();
-      ctx.arc(38, 98, 14, 0, Math.PI * 2);
-      ctx.fillStyle = '#e57373';
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('D', 34, 102);
-
-      ctx.fillStyle = '#333333';
-      ctx.font = 'bold 13px sans-serif';
-      ctx.fillText('Delta', 60, 102);
-
-      ctx.font = '12px sans-serif';
-      ctx.fillStyle = '#222222';
-      ctx.fillText('Appointment with', 30, 126);
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('Prof. Dr. Nadira', 30, 142);
-      ctx.font = '12px sans-serif';
-      ctx.fillText('Sultana on 2026-10-17', 30, 158);
-      ctx.fillText('(04:00 PM) is confirmed.', 30, 174);
-      ctx.fillStyle = '#00796b';
-      ctx.fillText('Serial: #89. Fee: 800 BDT.', 30, 192);
-
-      // Incoming Chat Bubble 2
-      ctx.fillStyle = '#ffffff';
-      this.drawRoundedRect(ctx, 16, 245, 270, 160, 8);
-      ctx.fill();
-
-      ctx.fillStyle = '#222222';
-      ctx.font = '12px sans-serif';
-      ctx.fillText('Dear client, your', 30, 275);
-      ctx.fillText('appointment with', 30, 292);
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('Prof. Dr. Nadira Sultana', 30, 310);
-      ctx.font = '12px sans-serif';
-      ctx.fillText('on 2026-10-17 is confirmed.', 30, 328);
-      ctx.fillStyle = '#00796b';
-      ctx.fillText('Serial: #90. Fee: 800 BDT.', 30, 348);
-      ctx.fillStyle = '#666666';
-      ctx.fillText('Thank you for choosing us!', 30, 370);
-
-      return canvas.toDataURL('image/png');
-    },
-
-    /**
-     * Sample 2: Vector Magic Hurricane / Mascot Logo
-     */
-    createMascotSample() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 400;
-      canvas.height = 300;
-      const ctx = canvas.getContext('2d');
-
-      // Light background
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(0, 0, 400, 300);
-
-      // Shield background
-      ctx.save();
-      ctx.translate(200, 140);
-
-      // Gold shield
-      ctx.fillStyle = '#eab819';
-      ctx.beginPath();
-      ctx.moveTo(0, -90);
-      ctx.lineTo(85, -60);
-      ctx.lineTo(75, 40);
-      ctx.quadraticCurveTo(0, 110, 0, 110);
-      ctx.quadraticCurveTo(0, 110, -75, 40);
-      ctx.lineTo(-85, -60);
-      ctx.closePath();
-      ctx.fill();
-
-      // Deep Navy inner shield
-      ctx.fillStyle = '#0f2744';
-      ctx.beginPath();
-      ctx.moveTo(0, -80);
-      ctx.lineTo(75, -52);
-      ctx.lineTo(65, 34);
-      ctx.quadraticCurveTo(0, 96, 0, 96);
-      ctx.quadraticCurveTo(0, 96, -65, 34);
-      ctx.lineTo(-75, -52);
-      ctx.closePath();
-      ctx.fill();
-
-      // Dynamic swirl hurricane wings
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(0, -5, 36, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Crimson star
-      ctx.fillStyle = '#e63946';
-      this.drawStar(ctx, 0, -5, 5, 26, 12);
-      ctx.fill();
-
-      // Core eye
-      ctx.fillStyle = '#f1c40f';
-      ctx.beginPath();
-      ctx.arc(0, -5, 8, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-
-      // Typography banner
-      ctx.fillStyle = '#0f2744';
-      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
-      ctx.textAlign = 'center';
-      ctx.fillText('VECTOR MAGIC', 200, 265);
-
-      ctx.fillStyle = '#e63946';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.letterSpacing = '2px';
-      ctx.fillText('PRO AUTO TRACER', 200, 283);
-
-      return canvas.toDataURL('image/png');
-    },
-
-    /**
-     * Sample 3: Tech Geometric Emblem
-     */
-    createLogoSample() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 360;
-      canvas.height = 360;
-      const ctx = canvas.getContext('2d');
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 360, 360);
-
-      // Geometric Hexagon with inner diamond
-      ctx.save();
-      ctx.translate(180, 160);
-
-      // Cyan Hexagon
-      ctx.fillStyle = '#0284c7';
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3;
-        const x = 90 * Math.cos(angle);
-        const y = 90 * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-
-      // Dark Blue Polygon slice
-      ctx.fillStyle = '#0369a1';
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(90 * Math.cos(0), 90 * Math.sin(0));
-      ctx.lineTo(90 * Math.cos(Math.PI / 3), 90 * Math.sin(Math.PI / 3));
-      ctx.lineTo(90 * Math.cos((2 * Math.PI) / 3), 90 * Math.sin((2 * Math.PI) / 3));
-      ctx.closePath();
-      ctx.fill();
-
-      // Golden center diamond
-      ctx.fillStyle = '#f59e0b';
-      ctx.beginPath();
-      ctx.moveTo(0, -45);
-      ctx.lineTo(45, 0);
-      ctx.lineTo(0, 45);
-      ctx.lineTo(-45, 0);
-      ctx.closePath();
-      ctx.fill();
-
-      // White inner ring
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(0, 0, 16, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 20px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('NEXUS LABS', 180, 295);
+      // Subtle invoice header
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('VERIFIED CONTRACT', 30, 45);
 
       ctx.fillStyle = '#64748b';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('REFERENCE: #AGY-8849-2026', 30, 65);
+      ctx.fillText('DATE: OCTOBER 16, 2026', 30, 80);
+
+      // Horizontal separator line
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(30, 95);
+      ctx.lineTo(350, 95);
+      ctx.stroke();
+
+      // Document Body Text
+      ctx.fillStyle = '#334155';
       ctx.font = '12px sans-serif';
-      ctx.fillText('PRECISION VECTOR ENGINE', 180, 315);
+      ctx.fillText('This document certifies the vector conversion rights', 30, 125);
+      ctx.fillText('and commercial enterprise licensing agreement.', 30, 145);
+      ctx.fillText('All vector paths, mathematical Bézier splines,', 30, 165);
+      ctx.fillText('and CAD exports are cleared for production use.', 30, 185);
+
+      // Total fee badge
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(30, 220, 320, 50);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('MONTHLY ENTERPRISE SUBSCRIPTION', 45, 245);
+      ctx.fillStyle = '#059669';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('$99.00 / MONTH', 45, 263);
+
+      // Signature section
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('AUTHORIZED SIGNATURE:', 30, 335);
+
+      ctx.strokeStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(30, 420);
+      ctx.lineTo(260, 420);
+      ctx.stroke();
+
+      // Realistic Handwritten Signature curve
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(40, 395);
+      ctx.bezierCurveTo(70, 340, 90, 410, 110, 370);
+      ctx.bezierCurveTo(130, 330, 140, 430, 160, 385);
+      ctx.bezierCurveTo(180, 350, 195, 415, 220, 390);
+      ctx.bezierCurveTo(240, 370, 250, 385, 275, 360);
+      ctx.stroke();
+
+      // Stamp Seal
+      ctx.save();
+      ctx.translate(300, 380);
+      ctx.rotate(-0.15);
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 32, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#dc2626';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('FREEVECTOR', 0, -8);
+      ctx.fillText('APPROVED', 0, 6);
+      ctx.fillText('★ 2026 ★', 0, 18);
+      ctx.restore();
 
       return canvas.toDataURL('image/png');
-    },
-
-    drawRoundedRect(ctx, x, y, width, height, radius) {
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + width - radius, y);
-      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-      ctx.lineTo(x + width, y + height - radius);
-      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-      ctx.lineTo(x + radius, y + height);
-      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-      ctx.lineTo(x, y + radius);
-      ctx.quadraticCurveTo(x, y, x + radius, y);
-      ctx.closePath();
-    },
-
-    drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
-      let rot = (Math.PI / 2) * 3;
-      let x = cx;
-      let y = cy;
-      const step = Math.PI / spikes;
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - outerRadius);
-      for (let i = 0; i < spikes; i++) {
-        x = cx + Math.cos(rot) * outerRadius;
-        y = cy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-
-        x = cx + Math.cos(rot) * innerRadius;
-        y = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-      }
-      ctx.lineTo(cx, cy - outerRadius);
-      ctx.closePath();
     }
   };
 
