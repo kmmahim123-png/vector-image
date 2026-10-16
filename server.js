@@ -1,6 +1,6 @@
 /**
- * FreeVector AI Pro - Production Server
- * Express Server providing high-performance static hosting and vectorization endpoints
+ * Free Vector Image - Production Server
+ * High-performance server hosting the AI image-to-vector studio and API
  */
 
 const express = require('express');
@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static frontend assets
+// Serve static frontend assets (includes robots.txt and sitemap.xml for SEO)
 app.use(express.static(path.join(__dirname, 'public')));
 
 /**
@@ -25,35 +25,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/status', (req, res) => {
   res.json({
     status: 'online',
-    app: 'FreeVector AI Pro Studio',
-    version: '2.5.0-commercial',
-    features: ['SVG', 'EPS Level 3', 'AutoCAD DXF', 'Vector PDF-1.4', '8K Raster', 'CNC Cut Ready'],
-    tier: 'Enterprise $99/mo'
-  });
-});
-
-/**
- * License Key Validation Endpoint (for $100/mo enterprise client management)
- */
-app.post('/api/license/validate', (req, res) => {
-  const { key } = req.body;
-  if (!key || key.trim().length < 6) {
-    return res.status(400).json({ valid: false, message: 'Invalid license key format' });
-  }
-
-  res.json({
-    valid: true,
-    tier: 'Enterprise Commercial ($99/mo)',
-    status: 'active',
-    features: {
-      unlimitedTracing: true,
-      dxfAutoCAD: true,
-      epsLevel3: true,
-      vectorPdf: true,
-      commercialRights: true,
-      maxResolution: '8K Master'
+    app: 'Free Vector Image',
+    version: '3.0.0',
+    seo: {
+      sitemap: '/sitemap.xml',
+      robots: '/robots.txt'
     },
-    expires: '2028-12-31'
+    features: ['Ultra-Smooth Vector', 'Gap-Free Seams', 'Checkerboard Removal', 'SVG', 'EPS', 'DXF', 'PDF']
   });
 });
 
@@ -68,13 +46,16 @@ app.post('/api/vectorize', (req, res) => {
     }
 
     const opts = options || {
-      numberofcolors: 8,
+      numberofcolors: 32,
       colorsampling: 2,
-      colorquantcycles: 4,
-      ltres: 0.5,
-      qtres: 0.5,
-      pathomit: 4,
-      roundcoords: 2,
+      colorquantcycles: 5,
+      ltres: 0.05,
+      qtres: 0.12,
+      pathomit: 3,
+      blurradius: 2,
+      blurdelta: 25,
+      linefilter: true,
+      roundcoords: 3,
       viewbox: true
     };
 
@@ -98,13 +79,12 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Restart or listen
 const server = app.listen(PORT, () => {
   console.log(`=======================================================`);
-  console.log(`⚡ FreeVector AI Pro Studio is LIVE!`);
-  console.log(`🚀 Workspace URL: http://localhost:${PORT}`);
-  console.log(`💎 Commercial Standard: $99/Month Enterprise Edition`);
-  console.log(`📐 Formats: SVG • EPS Level 3 • AutoCAD DXF • PDF • 8K PNG`);
+  console.log(`✨ Free Vector Image Studio is LIVE!`);
+  console.log(`🚀 URL: http://localhost:${PORT}`);
+  console.log(`🌐 SEO Enabled: /sitemap.xml & /robots.txt`);
+  console.log(`💎 100x Quality Engine: Gap-Free Seams & Checkerboard Cleaner`);
   console.log(`=======================================================`);
 });
 

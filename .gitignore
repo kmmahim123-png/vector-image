@@ -1,0 +1,5 @@
+node_modules/
+package-lock.json
+rea-repo/
+.DS_Store
+*.log

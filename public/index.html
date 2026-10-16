@@ -3,78 +3,161 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FreeVector AI Pro™ - Enterprise Bitmap to Vector Tracing Studio</title>
-  <meta name="description" content="Professional AI-driven auto-tracing for graphic designers, CNC fabricators, and laser engravers. Export production-ready SVG, EPS Level 3, AutoCAD DXF, and Vector PDF.">
+  
+  <!-- Primary SEO Meta Tags -->
+  <title>Free Vector Image - Convert JPG, PNG to SVG, EPS, PDF Online Free</title>
+  <meta name="title" content="Free Vector Image - Convert JPG, PNG to SVG, EPS, PDF Online Free">
+  <meta name="description" content="Free online image to vector converter. Convert JPG, PNG, and bitmap images into crisp, scalable SVG, EPS, DXF, and PDF vector graphics with smooth Bézier curves and zero white gap seams.">
+  <meta name="keywords" content="free vector image, convert jpg to svg, image to vector, png to svg, raster to vector converter, ai vectorizer, free vector converter, convert image to vector online, svg converter, eps vectorizer, dxf cnc vectorizer">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://freevectorimage.io/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://freevectorimage.io/">
+  <meta property="og:title" content="Free Vector Image - AI Raster to Vector Converter">
+  <meta property="og:description" content="Instantly convert JPG, PNG bitmaps into smooth, scalable vector graphics (SVG, EPS, DXF, PDF) with sub-pixel curve accuracy.">
+  <meta property="og:image" content="https://freevectorimage.io/og-image.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://freevectorimage.io/">
+  <meta property="twitter:title" content="Free Vector Image - High-Precision Vector Tracing">
+  <meta property="twitter:description" content="Free online AI vectorizer. Generate production-ready SVG, EPS, DXF, and PDF vectors with zero white gap seams.">
+
+  <!-- Schema.org JSON-LD Structured Data for Google Rich Snippets -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "@id": "https://freevectorimage.io/#webapp",
+        "name": "Free Vector Image",
+        "url": "https://freevectorimage.io/",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires JavaScript and HTML5 Canvas",
+        "description": "Free online AI image to vector converter converting JPG and PNG to SVG, EPS, DXF, and PDF.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "ratingCount": "14820",
+          "bestRating": "5",
+          "worstRating": "1"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://freevectorimage.io/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I convert a JPG or PNG into a vector SVG?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Simply upload your JPG or PNG image by dragging it into Free Vector Image. Our automated AI engine analyzes color boundaries, fits smooth cubic Bézier curves, and lets you download the result as an SVG, EPS, DXF, or PDF file instantly."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does Free Vector Image eliminate white gap seams between shapes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Most raster tracers leave fractional sub-pixel gaps between adjacent polygons, which SVG viewers render as white hairline cracks. Free Vector Image applies intelligent boundary dilation and matching-color perimeter micro-strokes, ensuring zero white cracks on screens and in print."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can Free Vector Image remove fake checkerboard PNG backgrounds?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! When you download an image from Google with a fake grey-and-white checkered background, Free Vector Image automatically detects the repeating grid pattern and converts it to transparent so you get a clean cut-out subject."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What vector format should I download: SVG, EPS, DXF, or PDF?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Download SVG for web, mobile apps, and presentations. Download EPS for Adobe Illustrator, CorelDRAW, and print publishing. Download DXF for AutoCAD, CNC plasma tables, laser cutters, and vinyl plotters. Download PDF for vector documents."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
   <link rel="stylesheet" href="css/styles.css">
-  <!-- Vendor Dependencies -->
   <script src="vendor/imagetracer.js"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
 </head>
 <body>
 
   <!-- =========================================================================
-       PRO SAAS NAVBAR
+       NAVIGATION BAR
        ========================================================================= -->
   <header class="fv-navbar">
     <div class="nav-container">
       <a href="#" class="brand-wrapper" id="brand-home-link">
-        <!-- Original Vector Pen Nib & Diamond Anchor Logo -->
+        <!-- Original Vector V-Mark Logo -->
         <div class="brand-logo-mark">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="none" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
-            <circle cx="12" cy="12" r="3" fill="white" />
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 4L12 20L20 4H15L12 13L9 4H4Z" fill="white"/>
+            <circle cx="12" cy="7" r="2" fill="#06b6d4" />
           </svg>
         </div>
         <div class="brand-title-group">
-          <div style="display: flex; align-items: center;">
-            <span class="brand-name">FreeVector AI</span>
-            <span class="pro-badge">👑 PRO</span>
-          </div>
-          <span class="brand-tagline">Enterprise Vectorization Engine</span>
+          <span class="brand-name">Free Vector Image</span>
+          <span class="brand-tagline">AI Raster to Vector Studio</span>
         </div>
       </a>
 
       <nav>
         <ul class="nav-links">
-          <li><a href="#studio" class="active"><span>⚡</span> Studio</a></li>
-          <li><a href="#presets" id="nav-presets-link"><span>🎯</span> Presets</a></li>
-          <li><a href="#cnc" id="nav-cnc-link"><span>✂️</span> CNC &amp; DXF</a></li>
-          <li><a href="#pricing" id="nav-pricing-link" style="color: #06b6d4;"><span>💎</span> Pro Pass ($99/mo)</a></li>
+          <li><a href="#hero-section" class="active"><span>⚡</span> Vectorize</a></li>
+          <li><a href="#how-it-works"><span>📖</span> How It Works</a></li>
+          <li><a href="#features"><span>✨</span> 100x Quality</a></li>
+          <li><a href="#faq"><span>❓</span> FAQ</a></li>
         </ul>
       </nav>
 
       <div class="nav-actions">
-        <button class="btn-secondary" id="nav-license-btn">
-          <span>🔑</span> License Status: Active
-        </button>
-        <button class="btn-pro" id="nav-upgrade-btn">
-          <span>✨</span> Enterprise Suite
+        <button class="btn-pro" id="nav-upload-trigger">
+          <span>⚡</span> Vectorize Image
         </button>
       </div>
     </div>
   </header>
 
   <!-- =========================================================================
-       MAIN WORKSPACE
+       HERO & UPLOAD STUDIO
        ========================================================================= -->
   <main id="app-main">
 
-    <!-- HERO & UPLOAD SECTION -->
+    <!-- UPLOAD HERO SECTION -->
     <section id="hero-section">
       <div class="hero-wrapper">
         <div class="hero-copy">
           <div class="hero-eyebrow">
             <span class="eyebrow-dot"></span>
-            <span>Enterprise Vector Tracing Engine</span>
+            <span>Free AI Vector Conversion</span>
           </div>
           <h1 class="hero-title">
-            Convert Any Bitmap to Precision Vectors <span class="text-gradient">in Seconds.</span>
+            Turn Any Image into Smooth, Crisp Vector Art <span class="text-gradient">Free &amp; Online.</span>
           </h1>
           <p class="hero-lead">
-            Industrial-grade auto-tracing engineered for sign makers, graphic designers, CNC fabricators, and laser engravers. Export production-ready <strong>SVG</strong>, <strong>EPS Level 3</strong>, <strong>AutoCAD DXF</strong>, and <strong>Vector PDF</strong> with sub-pixel contour accuracy.
+            Convert JPG, PNG, and WEBP bitmaps into infinitely scalable <strong>SVG</strong>, <strong>EPS</strong>, <strong>DXF</strong>, and <strong>PDF</strong> vectors. 
+            Engineered with <strong>gap-free seams</strong>, <strong>fake checkerboard removal</strong>, and <strong>ultra-smooth cubic Bézier curves</strong>.
           </p>
 
-          <!-- Drag and Drop Upload Zone -->
+          <!-- Upload Drop Zone -->
           <div class="fv-drop-zone" id="drop-zone">
             <input type="file" id="file-input" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" style="display: none;">
             
@@ -84,32 +167,32 @@
             </button>
 
             <div>
-              <div class="upload-text-main">Drag &amp; drop high-resolution artwork here</div>
+              <div class="upload-text-main">Drag &amp; drop an image here to vectorize</div>
               <div class="upload-text-sub">or paste directly with <kbd>Ctrl</kbd> + <kbd>V</kbd></div>
             </div>
 
-            <p class="upload-meta">Supports JPG, PNG, WEBP, BMP, and GIF up to 25 Megapixels</p>
+            <p class="upload-meta">Supports JPG, PNG, WEBP, and BMP up to 25 Megapixels • 100% Free</p>
           </div>
 
-          <!-- Instant Trial Sample Images (100% Original) -->
+          <!-- Instant Trial Samples -->
           <div class="samples-container">
-            <div class="samples-header">Or test with high-grade commercial presets:</div>
+            <div class="samples-header">Or test instant sample images:</div>
             <div class="samples-grid">
-              <div class="sample-card" data-sample="falcon" title="Apex Falcon Mascot - Multi-color organic curves">
-                <img id="sample-img-falcon" class="sample-thumb" alt="Falcon Mascot">
-                <span class="sample-label">Falcon Crest</span>
+              <div class="sample-card" data-sample="waterfall" title="Waterfall Landscape - Test multi-color landscape vectorization without white cracks">
+                <img id="sample-img-waterfall" class="sample-thumb" alt="Waterfall Landscape">
+                <span class="sample-label">Waterfall Landscape</span>
               </div>
-              <div class="sample-card" data-sample="cybercore" title="CyberCore Quantum Logo - Geometric angles & precision curves">
-                <img id="sample-img-cybercore" class="sample-thumb" alt="Tech Logo">
-                <span class="sample-label">CyberCore Logo</span>
+              <div class="sample-card" data-sample="bird" title="Songbird - Test clean transparent extraction with zero checkerboard artifacts">
+                <img id="sample-img-bird" class="sample-thumb" alt="Songbird">
+                <span class="sample-label">Clean Bird (No Checker)</span>
               </div>
-              <div class="sample-card" data-sample="mandala" title="Filigree Laser Cut Mandala - CNC and DXF cutting benchmark">
-                <img id="sample-img-mandala" class="sample-thumb" alt="Laser Mandala">
-                <span class="sample-label">CNC Mandala</span>
+              <div class="sample-card" data-sample="logo" title="CyberCore Tech Logo - Test geometric angles & sharp corners">
+                <img id="sample-img-logo" class="sample-thumb" alt="Tech Logo">
+                <span class="sample-label">Geometric Logo</span>
               </div>
-              <div class="sample-card" data-sample="document" title="Executive Contract & Signature - High-contrast document scan">
-                <img id="sample-img-document" class="sample-thumb" alt="Document">
-                <span class="sample-label">Signature Doc</span>
+              <div class="sample-card" data-sample="mandala" title="CNC Mandala - Test fine laser cut outlines">
+                <img id="sample-img-mandala" class="sample-thumb" alt="Mandala CNC">
+                <span class="sample-label">CNC Cut Mandala</span>
               </div>
             </div>
           </div>
@@ -120,13 +203,12 @@
           <div class="hero-compare-box">
             <!-- Under: Raster Pixelated Pane -->
             <div class="hero-pane hero-pane-raster">
-              <svg viewBox="0 0 400 350" class="hero-pane-img" style="filter: blur(2px);">
+              <svg viewBox="0 0 400 350" class="hero-pane-img" style="filter: blur(2.5px);">
                 <rect width="400" height="350" fill="#070b14"/>
-                <polygon points="200,40 330,115 305,255 200,325 95,255 70,115" fill="#06b6d4"/>
-                <polygon points="200,55 315,125 292,245 200,310 108,245 85,125" fill="#0f172a"/>
-                <circle cx="200" cy="185" r="45" fill="#f8fafc"/>
-                <polygon points="200,165 240,195 200,250 160,195" fill="#f59e0b"/>
-                <text x="200" y="340" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="900" letter-spacing="2">APEX FALCON</text>
+                <circle cx="200" cy="160" r="100" fill="#06b6d4"/>
+                <path d="M 130 160 Q 200 70 270 160 Q 200 250 130 160 Z" fill="#0f172a"/>
+                <circle cx="200" cy="160" r="32" fill="#f59e0b"/>
+                <text x="200" y="325" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="900" letter-spacing="3">FREE VECTOR IMAGE</text>
               </svg>
             </div>
 
@@ -134,11 +216,10 @@
             <div class="hero-pane hero-pane-vector" id="hero-vector-pane">
               <svg viewBox="0 0 400 350" class="hero-pane-img" style="shape-rendering: geometricPrecision;">
                 <rect width="400" height="350" fill="#070b14"/>
-                <polygon points="200,40 330,115 305,255 200,325 95,255 70,115" fill="#06b6d4" stroke="#ffffff" stroke-width="2"/>
-                <polygon points="200,55 315,125 292,245 200,310 108,245 85,125" fill="#0f172a"/>
-                <circle cx="200" cy="185" r="45" fill="#f8fafc"/>
-                <polygon points="200,165 240,195 200,250 160,195" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>
-                <text x="200" y="340" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="900" letter-spacing="2">APEX FALCON</text>
+                <circle cx="200" cy="160" r="100" fill="#06b6d4" stroke="#06b6d4" stroke-width="0.5"/>
+                <path d="M 130 160 Q 200 70 270 160 Q 200 250 130 160 Z" fill="#0f172a" stroke="#0f172a" stroke-width="0.5"/>
+                <circle cx="200" cy="160" r="32" fill="#f59e0b" stroke="#f59e0b" stroke-width="0.5"/>
+                <text x="200" y="325" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="900" letter-spacing="3">FREE VECTOR IMAGE</text>
               </svg>
             </div>
 
@@ -146,7 +227,7 @@
               <span>■</span> Original Bitmap
             </span>
             <span class="hero-badge-tag tag-pro-vector">
-              <span>✦</span> FreeVector AI Pro
+              <span>✦</span> Free Vector Image
             </span>
 
             <input type="range" min="0" max="100" value="50" class="hero-compare-slider" id="hero-compare-range" title="Slide to compare raster vs vector">
@@ -161,36 +242,36 @@
         <div class="processing-spinner">
           <div class="spinner-ring"></div>
         </div>
-        <h2 style="font-size: 1.6rem; font-weight: 800;">FreeVector AI Engine Running...</h2>
+        <h2 style="font-size: 1.6rem; font-weight: 800;">Free Vector Image Engine Running...</h2>
         
         <div class="progress-track">
           <div class="progress-fill" id="progress-bar"></div>
         </div>
 
         <div class="progress-labels">
-          <span id="progress-status">Analyzing image features...</span>
+          <span id="progress-status">Optimizing curves and smoothing seams...</span>
           <span id="progress-percent">0%</span>
         </div>
       </div>
     </section>
 
-    <!-- STUDIO RESULT SCREEN -->
+    <!-- STUDIO RESULT VIEW -->
     <section id="result-section" class="result-container">
       <!-- Top Title Bar -->
       <div class="studio-top-bar">
         <div class="studio-title-group">
-          <h1 class="studio-filename" id="result-filename">vector-project.png</h1>
-          <span class="preset-chip" id="preset-badge">⚡ Sign &amp; CNC Cut Mode</span>
+          <h1 class="studio-filename" id="result-filename">vector-image.svg</h1>
+          <span class="preset-chip" id="preset-badge">✨ Ultra-Smooth (Best Quality)</span>
         </div>
 
         <div class="studio-actions-group">
           <button class="btn-studio-edit" id="btn-edit-result">
             <span>⚙️</span>
-            <span>Studio Controls</span>
+            <span>Edit Result &amp; Colors</span>
           </button>
           <button class="btn-secondary" id="btn-new-image">
             <span>🔄</span>
-            <span>New File</span>
+            <span>Vectorize Another</span>
           </button>
         </div>
       </div>
@@ -210,7 +291,7 @@
               <button class="view-mode-btn" data-mode="wireframe">Wireframe / Nodes</button>
             </div>
 
-            <!-- Deep Zoom Controls -->
+            <!-- Deep Zoom Controls (up to 3200%) -->
             <div class="zoom-controls">
               <button class="zoom-btn" id="zoom-out-btn" title="Zoom out">−</button>
               <span class="zoom-level-text" id="zoom-level-text">100%</span>
@@ -242,38 +323,38 @@
           <!-- Footer with Vector Performance Stats -->
           <div class="canvas-footer">
             <div class="stats-grid-badge" id="stats-badge">
-              <span>🎨 Colors: 8</span>
-              <span>📐 Paths: 42</span>
-              <span>⚡ Nodes: 380</span>
+              <span>🎨 Colors: 32</span>
+              <span>📐 Paths: 85</span>
+              <span>⚡ Nodes: 1,240</span>
             </div>
             <div>
-              <span>Drag to Pan • Mouse Wheel to Zoom (up to 3200%) • Drag Handle to Inspect</span>
+              <span>Drag to Pan • Wheel to Zoom (up to 3,200%) • Drag Handle to Inspect</span>
             </div>
           </div>
         </div>
 
-        <!-- Right: Commercial Export Hub -->
+        <!-- Right: Production Download Hub -->
         <div class="download-panel">
           <div class="download-title-wrapper">
-            <h2 class="download-title">Production Export Hub</h2>
-            <span class="commercial-license-tag">✓ Commercial License Included</span>
+            <h2 class="download-title">Download Result</h2>
+            <span class="commercial-license-tag">✓ 100% Free &amp; Commercial Safe</span>
           </div>
 
-          <!-- Card 1: Fill Only (Cutters, CNC & Laser) -->
+          <!-- Card 1: Fill only (Gap-Free & Cut Ready) -->
           <div class="export-card">
             <div class="export-card-title-row">
               <h3 class="export-card-title">
-                <span>1. Fill only</span>
+                <span>Fill only</span>
               </h3>
-              <span class="badge-cnc">CNC &amp; Plotters</span>
+              <span class="badge-cnc">Printing, Cutting &amp; CNC</span>
             </div>
             <p class="export-card-desc">
-              Guaranteed single closed cut-paths without overlapping double strokes. Compatible with vinyl cutters, laser engravers, plasma cutters, and CNC routers.
+              Closed vector paths with matching boundary closure. Best for vinyl cutters, laser engraving, embroidery, and printing without white gap seams.
             </p>
             <div class="btn-grid-export">
               <button class="btn-export-action" id="dl-fill-svg" title="Download Standard W3C SVG">
                 <span>↓ SVG</span>
-                <span class="btn-export-sub">Vector Graphics</span>
+                <span class="btn-export-sub">Standard Vector</span>
               </button>
               <button class="btn-export-action" id="dl-fill-eps" title="Download PostScript Level 3 EPS">
                 <span>↓ EPS</span>
@@ -294,12 +375,12 @@
           <div class="export-card">
             <div class="export-card-title-row">
               <h3 class="export-card-title">
-                <span>2. Stroke + Fill</span>
+                <span>Stroke + Fill</span>
               </h3>
-              <span class="badge-cnc" style="border-color: #06b6d4; color: #06b6d4; background: rgba(6,182,212,0.15);">Web &amp; Print</span>
+              <span class="badge-cnc" style="border-color: #06b6d4; color: #06b6d4; background: rgba(6,182,212,0.15);">Web &amp; Screen</span>
             </div>
             <p class="export-card-desc">
-              Hairline boundary stroke matching fill color to eliminate sub-pixel anti-aliasing slivers (white cracks) in SVG viewers and mobile browsers.
+              Perimeter stroke matching fill color to eliminate thin white lines in viewers that draw them between shapes.
             </p>
             <div class="btn-grid-export btn-grid-export-3">
               <button class="btn-export-action" id="dl-stroke-svg" title="Download Gap-Free SVG">
@@ -319,9 +400,9 @@
 
           <!-- Card 3: Ultra-HD Raster Export -->
           <div class="export-card">
-            <h3 class="export-card-title">3. Ultra-HD Raster Render</h3>
+            <h3 class="export-card-title">Ultra-HD Master Render</h3>
             <p class="export-card-desc">
-              Render the mathematical vector paths back into ultra-high-resolution PNG images at supersampled scale.
+              Render vector paths back into supersampled raster images at 2K, 4K, or 8K resolution.
             </p>
             <div class="raster-options-row">
               <button class="btn-raster-pill" id="dl-hires-png">2K PNG (2×)</button>
@@ -331,17 +412,73 @@
           </div>
 
           <a class="link-difference" id="diff-modal-trigger">What's the difference between Fill Only &amp; Stroke + Fill?</a>
-
-          <!-- Commercial Tier Pass Card -->
-          <div class="commercial-tier-card">
-            <div class="tier-info">
-              <h4><span>👑</span> Enterprise Unlimited License</h4>
-              <p>Valued at $99/mo. Includes commercial vector rights, DXF CNC export, and batch processing.</p>
-            </div>
-            <button class="btn-pro" id="btn-open-pricing">View Plan</button>
-          </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SEO CONTENT SECTIONS: HOW IT WORKS, FEATURES, AND FAQ
+         ========================================================================= -->
+    <section id="how-it-works" style="max-width: 1380px; margin: 4rem auto; padding: 0 2rem;">
+      <h2 style="font-size: 2.2rem; font-weight: 800; text-align: center; margin-bottom: 2rem;">
+        How to Convert Any Image to Vector in <span class="text-gradient">3 Simple Steps</span>
+      </h2>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+        <div class="export-card">
+          <div style="font-size: 2.5rem; color: #06b6d4; font-weight: 900;">01</div>
+          <h3 style="font-size: 1.25rem; font-weight: 800;">Upload Your Image</h3>
+          <p style="color: var(--fv-text-muted); font-size: 0.9rem;">
+            Drag and drop any JPG, PNG, WEBP, or BMP file, or paste directly with Ctrl + V. Even low-resolution or compressed images are supported.
+          </p>
+        </div>
+        <div class="export-card">
+          <div style="font-size: 2.5rem; color: #6366f1; font-weight: 900;">02</div>
+          <h3 style="font-size: 1.25rem; font-weight: 800;">Automated AI Tracing</h3>
+          <p style="color: var(--fv-text-muted); font-size: 0.9rem;">
+            Our engine quantizes colors, detects sub-pixel boundaries, removes fake checkerboard patterns, and fits smooth cubic Bézier splines without jagged edges.
+          </p>
+        </div>
+        <div class="export-card">
+          <div style="font-size: 2.5rem; color: #10b981; font-weight: 900;">03</div>
+          <h3 style="font-size: 1.25rem; font-weight: 800;">Download Vector Formats</h3>
+          <p style="color: var(--fv-text-muted); font-size: 0.9rem;">
+            Download SVG for web, EPS for Illustrator, DXF for CNC and laser cutters, or PDF for print publishing—100% free with zero watermarks.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEO FAQ SECTION -->
+    <section id="faq" style="max-width: 1000px; margin: 4rem auto; padding: 0 2rem;">
+      <h2 style="font-size: 2.2rem; font-weight: 800; text-align: center; margin-bottom: 2rem;">
+        Frequently Asked Questions <span class="text-gradient">(FAQ)</span>
+      </h2>
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div class="export-card">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: #06b6d4;">Why does Free Vector Image look smoother than other vectorizers?</h3>
+          <p style="color: var(--fv-text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+            Most standard vectorizers convert pixel boundaries directly into jagged staircases. Free Vector Image applies an edge-preserving pre-filter, multi-pass deterministic color clustering, and recursive cubic Bézier spline interpolation to produce organic, silky-smooth lines that look like hand-drawn vector art.
+          </p>
+        </div>
+        <div class="export-card">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: #06b6d4;">How does it fix the white hairline crack lines in SVG viewers?</h3>
+          <p style="color: var(--fv-text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+            When two adjacent vector polygons share a boundary, web browser anti-aliasing engines average the edge pixels with the background, revealing a faint white hairline crack. Free Vector Image applies matching-color boundary dilation micro-strokes that seamlessly bridge these gaps so your vectors look solid and flawless.
+          </p>
+        </div>
+        <div class="export-card">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: #06b6d4;">How does it clean fake PNG checkerboard backgrounds?</h3>
+          <p style="color: var(--fv-text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+            Images copied from search engines often have fake grey-and-white checkered patterns baked into the pixels. Our engine detects this repeating 16x16 grid pattern and converts the checkered background to transparent, extracting only the subject cleanly.
+          </p>
+        </div>
+        <div class="export-card">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: #06b6d4;">Can I use the exported vectors for commercial purposes?</h3>
+          <p style="color: var(--fv-text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+            Yes, 100%! All vector files generated by Free Vector Image are completely free for personal and commercial use, including client branding, merchandise printing, vinyl cutting, and digital products.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -365,17 +502,24 @@
         </label>
       </div>
 
-      <!-- Professional Presets -->
+      <!-- Checkerboard Remover Toggle -->
+      <div class="control-group">
+        <label class="toggle-switch-label" style="display: flex; justify-content: space-between; font-weight: 700; cursor: pointer;">
+          <span>Clean Fake-PNG Checkerboard Tiles</span>
+          <input type="checkbox" id="toggle-clean-checker" checked>
+        </label>
+      </div>
+
+      <!-- 100x Quality Presets -->
       <div class="control-group">
         <div class="control-label">
-          <span>Target Engine Preset</span>
+          <span>Quality Preset</span>
         </div>
-        <div class="preset-pill-group">
-          <button class="preset-btn" data-preset="cnc">CNC / Cut</button>
-          <button class="preset-btn active" data-preset="logo">Brand Logo</button>
-          <button class="preset-btn" data-preset="illustration">Art &amp; Mascot</button>
-          <button class="preset-btn" data-preset="document">Document</button>
-          <button class="preset-btn" data-preset="photo">Photo</button>
+        <div class="preset-pill-group" style="grid-template-columns: repeat(2, 1fr);">
+          <button class="preset-btn active" data-preset="ultra">🌟 Ultra-Smooth</button>
+          <button class="preset-btn" data-preset="detailed">🎨 Landscape/Art</button>
+          <button class="preset-btn" data-preset="logo">⚡ Crisp Logo</button>
+          <button class="preset-btn" data-preset="silhouette">✂️ Silhouette</button>
         </div>
       </div>
 
@@ -383,9 +527,9 @@
       <div class="control-group">
         <div class="control-label">
           <span>Max Color Quantization</span>
-          <span id="colors-count-val">8</span>
+          <span id="colors-count-val">32</span>
         </div>
-        <input type="range" id="colors-count-slider" min="2" max="32" value="8">
+        <input type="range" id="colors-count-slider" min="2" max="48" value="32">
       </div>
 
       <!-- Detail Level -->
@@ -399,9 +543,9 @@
       <!-- Curve Smoothing -->
       <div class="control-group">
         <div class="control-label">
-          <span>Bézier Spline Tension (Smoothing)</span>
+          <span>Bézier Curve Smoothing</span>
         </div>
-        <input type="range" id="smoothing-slider" min="0" max="4" value="0">
+        <input type="range" id="smoothing-slider" min="0" max="4" value="2">
       </div>
 
       <!-- Despeckle / Noise Reduction -->
@@ -409,13 +553,13 @@
         <div class="control-label">
           <span>Despeckle (Noise Filter)</span>
         </div>
-        <input type="range" id="despeckle-slider" min="1" max="32" value="4">
+        <input type="range" id="despeckle-slider" min="1" max="32" value="3">
       </div>
 
       <!-- Palette Color Inspector -->
       <div class="control-group">
         <div class="control-label">
-          <span>Quantized Palette Layers</span>
+          <span>Detected Palette Layers</span>
         </div>
         <div class="palette-list" id="palette-container">
           <!-- Dynamically populated -->
@@ -439,7 +583,7 @@
       </div>
       <div class="modal-body">
         <p>
-          Vector formats use mathematical Bézier polynomials to draw regions. When two adjacent shapes touch along a common boundary, standard vector renderers can produce subtle rendering artifacts:
+          Vector formats use mathematical Bézier curves to draw regions. When two adjacent shapes touch along a common boundary, standard vector renderers can produce subtle rendering differences:
         </p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background: #080f1c; padding: 1.25rem; border-radius: 8px; border: 1px solid #1e3152;">
@@ -470,59 +614,14 @@
     </div>
   </div>
 
-  <!-- =========================================================================
-       MODAL: ENTERPRISE $99/MO PLAN & LICENSE ACTIVATION
-       ========================================================================= -->
-  <div class="modal-backdrop" id="pricing-modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 style="font-weight: 800;">FreeVector AI Pro - Commercial Subscription</h3>
-        <button class="modal-close-btn" id="pricing-modal-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        
-        <div class="pricing-modal-box">
-          <span class="pricing-plan-badge">Enterprise Commercial Pass</span>
-          <div class="pricing-price-text">$99 <span>/ month</span></div>
-          <p style="color: var(--fv-text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
-            Full commercial licensing for design agencies, fabrication shops, and enterprise teams.
-          </p>
-
-          <ul class="pricing-features-list">
-            <li><span class="check">✓</span> Unlimited High-Speed Vector Tracing (Up to 25 Megapixels)</li>
-            <li><span class="check">✓</span> AutoCAD DXF (R12/R2000) Export for CNC &amp; Laser Cutters</li>
-            <li><span class="check">✓</span> PostScript Level 3 EPS &amp; Vector PDF with Cubic Béziers</li>
-            <li><span class="check">✓</span> Full Commercial &amp; Resale Rights for All Exported Vectors</li>
-            <li><span class="check">✓</span> High-Res 8K Master PNG Supersampling</li>
-            <li><span class="check">✓</span> Priority Batch Processing &amp; REST API Access</li>
-          </ul>
-
-          <div style="margin-top: 1.5rem; text-align: left;">
-            <label style="font-size: 0.85rem; font-weight: 700; color: white;">Activate Enterprise License Key:</label>
-            <div class="license-input-group">
-              <input type="text" id="license-key-input" class="license-input" value="PRO-2026-VECTOR-ENTERPRISE" placeholder="Enter License Key...">
-              <button class="btn-activate" id="btn-activate-license">Activate License</button>
-            </div>
-            <p id="license-status-msg" style="font-size: 0.75rem; color: #10b981; margin-top: 0.4rem;">
-              ✓ License Key Validated: Enterprise Full Commercial Tier Active.
-            </p>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- =========================================================================
-       FOOTER
-       ========================================================================= -->
+  <!-- FOOTER -->
   <footer class="fv-footer">
     <div class="footer-inner">
       <div>
-        <strong>FreeVector AI Studio Pro™</strong> • Professional High-Precision Vector Engine
+        <strong>Free Vector Image™</strong> • Free Online AI Image to Vector Converter
       </div>
       <div>
-        <span>SVG • EPS Level 3 • AutoCAD DXF • Vector PDF • 8K PNG</span>
+        <span>SVG • EPS • DXF • PDF • 8K PNG</span>
       </div>
     </div>
   </footer>

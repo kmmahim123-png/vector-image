@@ -1,7 +1,7 @@
 /**
- * FreeVector AI Pro - Studio Controller
- * Handles Studio Viewport, Deep Zoom (up to 3200%), CNC DXF/SVG Exporters,
- * Preset Switching, and Enterprise License Management
+ * Free Vector Image - Main Application Controller
+ * Handles Studio Viewport, Deep Zoom (up to 3200%), Gap-Free Exporters,
+ * Preset Switching, and Checkerboard Cleaner
  */
 
 (function () {
@@ -13,7 +13,7 @@
   // App State
   const state = {
     screen: 'hero', // 'hero' | 'processing' | 'result'
-    fileName: 'vector-project.png',
+    fileName: 'vector-image.svg',
     originalImage: null,
     tracedata: null,
     stats: null,
@@ -26,17 +26,19 @@
     viewMode: 'split', // 'split' | 'side' | 'vector' | 'original' | 'wireframe'
     hiddenColors: new Set(),
     transparentBg: false,
-    currentPreset: 'logo',
+    cleanCheckerboard: true,
+    currentPreset: 'ultra',
     options: {
-      numberofcolors: 8,
-      ltres: 0.5,
-      qtres: 0.5,
-      pathomit: 4,
-      blurradius: 0
+      numberofcolors: 32,
+      ltres: 0.05,
+      qtres: 0.12,
+      pathomit: 3,
+      blurradius: 2,
+      blurdelta: 25
     }
   };
 
-  // DOM Cache
+  // DOM Elements
   const DOM = {
     heroSection: document.getElementById('hero-section'),
     processingSection: document.getElementById('processing-section'),
@@ -44,6 +46,7 @@
     dropZone: document.getElementById('drop-zone'),
     fileInput: document.getElementById('file-input'),
     uploadBtn: document.getElementById('upload-btn'),
+    navUploadTrigger: document.getElementById('nav-upload-trigger'),
     progressBar: document.getElementById('progress-bar'),
     progressStatus: document.getElementById('progress-status'),
     progressPercent: document.getElementById('progress-percent'),
@@ -67,6 +70,7 @@
     closeEditDrawer: document.getElementById('close-edit-drawer'),
     applyEditBtn: document.getElementById('apply-edit-btn'),
     transparentBgToggle: document.getElementById('toggle-transparent-bg'),
+    cleanCheckerToggle: document.getElementById('toggle-clean-checker'),
     colorsCountSlider: document.getElementById('colors-count-slider'),
     colorsCountVal: document.getElementById('colors-count-val'),
     detailSlider: document.getElementById('detail-slider'),
@@ -74,12 +78,7 @@
     despeckleSlider: document.getElementById('despeckle-slider'),
     diffModal: document.getElementById('diff-modal'),
     diffModalClose: document.getElementById('diff-modal-close'),
-    diffModalTrigger: document.getElementById('diff-modal-trigger'),
-    pricingModal: document.getElementById('pricing-modal'),
-    pricingModalClose: document.getElementById('pricing-modal-close'),
-    licenseKeyInput: document.getElementById('license-key-input'),
-    btnActivateLicense: document.getElementById('btn-activate-license'),
-    licenseStatusMsg: document.getElementById('license-status-msg')
+    diffModalTrigger: document.getElementById('diff-modal-trigger')
   };
 
   /**
@@ -97,20 +96,20 @@
 
     // Generate thumbnails for instant samples
     setTimeout(() => {
-      const falconSample = window.SampleGenerator.createFalconMascot();
-      const cybercoreSample = window.SampleGenerator.createCyberCoreLogo();
-      const mandalaSample = window.SampleGenerator.createLaserCutMandala();
-      const documentSample = window.SampleGenerator.createDocumentSample();
+      const waterfallSample = window.SampleGenerator.createWaterfallSample();
+      const birdSample = window.SampleGenerator.createBirdSample();
+      const logoSample = window.SampleGenerator.createLogoSample();
+      const mandalaSample = window.SampleGenerator.createMandalaSample();
 
-      const img1 = document.getElementById('sample-img-falcon');
-      const img2 = document.getElementById('sample-img-cybercore');
-      const img3 = document.getElementById('sample-img-mandala');
-      const img4 = document.getElementById('sample-img-document');
+      const img1 = document.getElementById('sample-img-waterfall');
+      const img2 = document.getElementById('sample-img-bird');
+      const img3 = document.getElementById('sample-img-logo');
+      const img4 = document.getElementById('sample-img-mandala');
 
-      if (img1) img1.src = falconSample;
-      if (img2) img2.src = cybercoreSample;
-      if (img3) img3.src = mandalaSample;
-      if (img4) img4.src = documentSample;
+      if (img1) img1.src = waterfallSample;
+      if (img2) img2.src = birdSample;
+      if (img3) img3.src = logoSample;
+      if (img4) img4.src = mandalaSample;
     }, 60);
   }
 
@@ -119,6 +118,13 @@
    */
   function setupUploadHandlers() {
     DOM.uploadBtn.addEventListener('click', () => DOM.fileInput.click());
+    if (DOM.navUploadTrigger) {
+      DOM.navUploadTrigger.addEventListener('click', () => {
+        showScreen('hero');
+        DOM.fileInput.click();
+      });
+    }
+
     DOM.dropZone.addEventListener('click', (e) => {
       if (e.target.tagName !== 'BUTTON') DOM.fileInput.click();
     });
@@ -182,24 +188,24 @@
         const sampleType = card.dataset.sample;
         let dataUrl = '';
         let sampleName = 'vector-sample.png';
-        let suggestedPreset = 'logo';
+        let suggestedPreset = 'ultra';
 
-        if (sampleType === 'falcon') {
-          dataUrl = window.SampleGenerator.createFalconMascot();
-          sampleName = 'Apex_Falcon_Esports_Crest.png';
-          suggestedPreset = 'illustration';
-        } else if (sampleType === 'cybercore') {
-          dataUrl = window.SampleGenerator.createCyberCoreLogo();
-          sampleName = 'CyberCore_Quantum_Logo.png';
+        if (sampleType === 'waterfall') {
+          dataUrl = window.SampleGenerator.createWaterfallSample();
+          sampleName = 'Waterfall_Landscape.png';
+          suggestedPreset = 'detailed';
+        } else if (sampleType === 'bird') {
+          dataUrl = window.SampleGenerator.createBirdSample();
+          sampleName = 'Songbird_Transparent.png';
+          suggestedPreset = 'ultra';
+        } else if (sampleType === 'logo') {
+          dataUrl = window.SampleGenerator.createLogoSample();
+          sampleName = 'CyberCore_Tech_Logo.png';
           suggestedPreset = 'logo';
         } else if (sampleType === 'mandala') {
-          dataUrl = window.SampleGenerator.createLaserCutMandala();
-          sampleName = 'Filigree_Laser_Mandala_CNC.png';
-          suggestedPreset = 'cnc';
-        } else if (sampleType === 'document') {
-          dataUrl = window.SampleGenerator.createDocumentSample();
-          sampleName = 'Executive_Verified_Contract.png';
-          suggestedPreset = 'document';
+          dataUrl = window.SampleGenerator.createMandalaSample();
+          sampleName = 'CNC_Laser_Mandala.png';
+          suggestedPreset = 'silhouette';
         }
 
         state.currentPreset = suggestedPreset;
@@ -223,17 +229,14 @@
     showScreen('processing');
 
     try {
+      engine.autoCleanBg = state.cleanCheckerboard;
+
       // Step 1: Load image & analyze heuristics
-      const { image, detectedType } = await engine.loadImage(source, fileName);
+      const { image, hasCheckerboard } = await engine.loadImage(source, fileName);
       state.originalImage = image;
       DOM.originalImgTag.src = image.src;
 
-      if (!state.currentPreset || state.currentPreset === 'logo') {
-        state.currentPreset = detectedType;
-        applyPresetToSliders(detectedType);
-      }
-
-      // Step 2: Vectorize with active options
+      // Step 2: Vectorize with 100x quality options
       const { tracedata, stats } = await engine.vectorize(
         {
           preset: state.currentPreset,
@@ -268,7 +271,7 @@
   function updatePresetBadge() {
     const p = window.VectorEngine.Presets[state.currentPreset];
     if (p && DOM.presetBadge) {
-      DOM.presetBadge.textContent = `⚡ ${p.name}`;
+      DOM.presetBadge.textContent = `✨ ${p.name}`;
     }
   }
 
@@ -280,6 +283,8 @@
     state.options.ltres = p.ltres;
     state.options.qtres = p.qtres;
     state.options.pathomit = p.pathomit;
+    state.options.blurradius = p.blurradius;
+    state.options.blurdelta = p.blurdelta;
 
     if (DOM.colorsCountSlider) {
       DOM.colorsCountSlider.value = p.numberofcolors;
@@ -445,13 +450,13 @@
    * Production Download Handlers: SVG, EPS, DXF, PDF, and 2K/4K/8K PNG
    */
   function setupDownloadButtons() {
-    // Fill Only Group (CNC, Laser, Plotters)
+    // Fill Only Group (Gap-free & cut ready)
     document.getElementById('dl-fill-svg').addEventListener('click', () => downloadFile('fill', 'svg'));
     document.getElementById('dl-fill-eps').addEventListener('click', () => downloadFile('fill', 'eps'));
     document.getElementById('dl-fill-dxf').addEventListener('click', () => downloadFile('fill', 'dxf'));
     document.getElementById('dl-fill-pdf').addEventListener('click', () => downloadFile('fill', 'pdf'));
 
-    // Stroke + Fill Group (Web, Mobile, Screens)
+    // Stroke + Fill Group (Web & Screen)
     document.getElementById('dl-stroke-svg').addEventListener('click', () => downloadFile('stroke_fill', 'svg'));
     document.getElementById('dl-stroke-eps').addEventListener('click', () => downloadFile('stroke_fill', 'eps'));
     document.getElementById('dl-stroke-pdf').addEventListener('click', () => downloadFile('stroke_fill', 'pdf'));
@@ -465,7 +470,7 @@
   function downloadFile(mode, format) {
     if (!state.tracedata) return;
     const baseName = state.fileName.replace(/\.[^/.]+$/, '');
-    const suffix = mode === 'fill' ? '-cut-ready' : '-display';
+    const suffix = mode === 'fill' ? '-vector' : '-seamless';
 
     if (format === 'svg') {
       const svg = window.VectorExporters.generateSVG(state.tracedata, {
@@ -591,9 +596,9 @@
     if (!state.stats || !DOM.statsBadge) return;
     DOM.statsBadge.innerHTML = `
       <span>🎨 <strong>${state.stats.colorsCount}</strong> Colors</span>
-      <span>📐 <strong>${state.stats.pathsCount}</strong> Closed Paths</span>
+      <span>📐 <strong>${state.stats.pathsCount}</strong> Paths</span>
       <span>⚡ <strong>${state.stats.nodesCount}</strong> Anchors</span>
-      <span>📦 Vector: <strong>${state.stats.vectorKb} KB</strong> (${state.stats.compression} compression)</span>
+      <span>📦 Vector: <strong>${state.stats.vectorKb} KB</strong></span>
     `;
   }
 
@@ -614,6 +619,12 @@
       renderVectorPreview();
     });
 
+    if (DOM.cleanCheckerToggle) {
+      DOM.cleanCheckerToggle.addEventListener('change', (e) => {
+        state.cleanCheckerboard = e.target.checked;
+      });
+    }
+
     DOM.colorsCountSlider.addEventListener('input', (e) => {
       DOM.colorsCountVal.textContent = e.target.value;
       state.options.numberofcolors = parseInt(e.target.value, 10);
@@ -621,13 +632,14 @@
 
     DOM.detailSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value, 10);
-      const res = (6 - val) * 0.35;
+      const res = (6 - val) * 0.05;
       state.options.ltres = res;
-      state.options.qtres = res;
+      state.options.qtres = res * 2;
     });
 
     DOM.smoothingSlider.addEventListener('input', (e) => {
       state.options.blurradius = parseInt(e.target.value, 10);
+      state.options.blurdelta = 20 + state.options.blurradius * 5;
     });
 
     DOM.despeckleSlider.addEventListener('input', (e) => {
@@ -652,10 +664,9 @@
   }
 
   /**
-   * Modals: What's the Difference & Enterprise $99/mo Plan
+   * Modal Handlers
    */
   function setupModals() {
-    // Difference Modal
     DOM.diffModalTrigger.addEventListener('click', (e) => {
       e.preventDefault();
       DOM.diffModal.classList.add('active');
@@ -665,38 +676,8 @@
       DOM.diffModal.classList.remove('active');
     });
 
-    // Pricing / Enterprise Modal
-    const openPricing = (e) => {
-      if (e) e.preventDefault();
-      DOM.pricingModal.classList.add('active');
-    };
-
-    document.getElementById('nav-pricing-link').addEventListener('click', openPricing);
-    document.getElementById('nav-upgrade-btn').addEventListener('click', openPricing);
-    document.getElementById('nav-license-btn').addEventListener('click', openPricing);
-    document.getElementById('btn-open-pricing').addEventListener('click', openPricing);
-
-    DOM.pricingModalClose.addEventListener('click', () => {
-      DOM.pricingModal.classList.remove('active');
-    });
-
-    // License Activation
-    DOM.btnActivateLicense.addEventListener('click', () => {
-      const key = DOM.licenseKeyInput.value.trim();
-      if (key.length > 5) {
-        DOM.licenseStatusMsg.textContent = '✓ License Key Validated: Enterprise Full Commercial Tier Active.';
-        DOM.licenseStatusMsg.style.color = '#10b981';
-      } else {
-        DOM.licenseStatusMsg.textContent = '✗ Invalid license key format.';
-        DOM.licenseStatusMsg.style.color = '#ef4444';
-      }
-    });
-
-    // Close on backdrop click
-    [DOM.diffModal, DOM.pricingModal].forEach((modal) => {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('active');
-      });
+    DOM.diffModal.addEventListener('click', (e) => {
+      if (e.target === DOM.diffModal) DOM.diffModal.classList.remove('active');
     });
   }
 
