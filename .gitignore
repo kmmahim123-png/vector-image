@@ -8,3 +8,5 @@ __pycache__/
 temp/*
 !temp/.gitkeep
 .env
+benchmark_logos/
+test_*.*

@@ -7,8 +7,9 @@ Combines:
   3. For Logos / Graphics / Typography:
      - 2x/3x Lanczos super-sampling (expanding physical pixels into continuous sub-pixel grid)
      - Anti-aliased Gaussian spatial guidance filter (dissolves discrete raster pixel steps into continuous gradient space)
-     - Adaptive Dominant Color Snapping (extracts true brand colors via K-Means, eliminating false anti-aliasing color ribbons)
-     - Organic Bézier Spline Fitting (corner_threshold: 82, length_threshold: 8.0, max_iterations: 40, splice_threshold: 60)
+     - Collinear Anti-Bleed Pruning: Mathematically detects and strips false anti-aliased gradient blend layers (eliminates grey halos!)
+     - Near-Duplicate Color Merging: Snaps adjacent micro-shades into unified solid brand colors
+     - Organic Bézier Spline Fitting (corner_threshold: 80, length_threshold: 7.5, max_iterations: 40, splice_threshold: 55)
      - Cutout mode on transparent background: cleanly isolates outer badge/shape from canvas corners
   4. For Photos / Rich Art:
      - Edge-preserving bilateral filter (cleans JPEG ringing/mosquito noise without median step-hardening)
@@ -86,53 +87,131 @@ def is_monochrome_image(img):
         return False
     return float(np.mean(diff < 18)) > 0.99
 
-def get_dominant_colors_auto(pixels_float, max_k=16):
-    """Finds optimal k dominant colors for a logo/graphic using reconstruction error elbow"""
-    sample_size = min(40000, len(pixels_float))
-    indices = np.random.choice(len(pixels_float), sample_size, replace=False)
-    sample = pixels_float[indices]
+def is_collinear_blend(c_test, c1, c2, max_dist=24.0):
+    """
+    Checks if c_test is an intermediate linear blend of two major color clusters c1 and c2.
+    c_test ~ alpha * c1 + (1 - alpha) * c2, 0.10 <= alpha <= 0.90
+    If True, c_test is anti-aliasing gradient bleed rather than a real graphic element.
+    """
+    v = c2.astype(np.float64) - c1.astype(np.float64)
+    v_norm_sq = np.sum(v**2)
+    if v_norm_sq < 225.0: # c1 and c2 are essentially the same color (<15 RGB dist)
+        return False
+        
+    u = c_test.astype(np.float64) - c1.astype(np.float64)
+    alpha = np.dot(u, v) / v_norm_sq
+    
+    if 0.10 <= alpha <= 0.90:
+        proj = c1.astype(np.float64) + alpha * v
+        dist = np.linalg.norm(c_test.astype(np.float64) - proj)
+        if dist < max_dist:
+            return True
+    return False
 
+def merge_near_duplicate_colors(centers, min_dist=24.0):
+    """Merges colors that differ by only tiny rounding/compression variations into a single solid color"""
+    merged = []
+    for c in centers:
+        found_near = False
+        for m in merged:
+            if np.linalg.norm(c.astype(float) - m.astype(float)) < min_dist:
+                found_near = True
+                break
+        if not found_near:
+            merged.append(c)
+    return np.array(merged)
+
+def extract_true_logo_palette(img_arr, max_k=10):
+    """
+    Intelligently extracts the true solid brand colors of a logo or vector graphic.
+    Prunes collinear anti-aliased edge blends and merges near-duplicate micro-shades.
+    """
+    pixels = img_arr.reshape((-1, 3)).astype(np.float32)
+    sample_size = min(35000, len(pixels))
+    idx = np.random.choice(len(pixels), sample_size, replace=False)
+    sample = pixels[idx]
+    
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 25, 0.2)
+    
+    # Check k=2 first
+    _, labels2, centers2 = cv2.kmeans(sample, 2, None, criteria, 6, cv2.KMEANS_PP_CENTERS)
+    dists2 = np.linalg.norm(sample - centers2[labels2.flatten()], axis=1)
+    coverage2 = np.mean(dists2 < 14.0) * 100
+    if coverage2 >= 91.5:
+        return np.uint8(centers2)
+        
+    # Check k=3
+    _, labels3, centers3 = cv2.kmeans(sample, 3, None, criteria, 6, cv2.KMEANS_PP_CENTERS)
+    dists3 = np.linalg.norm(sample - centers3[labels3.flatten()], axis=1)
+    coverage3 = np.mean(dists3 < 14.0) * 100
+    
+    # Check if 3rd center is a linear blend between 1st and 2nd (e.g. grey halo between black and white)
+    if is_collinear_blend(centers3[2], centers3[0], centers3[1]) or \
+       is_collinear_blend(centers3[1], centers3[0], centers3[2]) or \
+       is_collinear_blend(centers3[0], centers3[1], centers3[2]):
+        return np.uint8(centers2)
+        
+    if coverage3 >= 92.0:
+        return np.uint8(centers3)
+        
+    # Check k=4 to max_k
+    best_centers = centers3
+    best_coverage = coverage3
+    
+    for k in range(4, max_k + 1):
+        _, labels_k, centers_k = cv2.kmeans(sample, k, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
+        dists_k = np.linalg.norm(sample - centers_k[labels_k.flatten()], axis=1)
+        coverage_k = np.mean(dists_k < 14.0) * 100
+        
+        unique, counts = np.unique(labels_k, return_counts=True)
+        order = np.argsort(counts)[::-1]
+        sorted_centers = centers_k[order]
+        
+        # Merge near-duplicates (<24 RGB distance)
+        merged_sorted = merge_near_duplicate_colors(sorted_centers, min_dist=24.0)
+        
+        # Filter out collinear edge-bleed blends
+        kept_centers = [merged_sorted[0], merged_sorted[1]]
+        for cand in merged_sorted[2:]:
+            is_blend = False
+            for i in range(len(kept_centers)):
+                for j in range(i + 1, len(kept_centers)):
+                    if is_collinear_blend(cand, kept_centers[i], kept_centers[j]):
+                        is_blend = True
+                        break
+                if is_blend:
+                    break
+            if not is_blend:
+                kept_centers.append(cand)
+                
+        if len(kept_centers) > len(best_centers) and coverage_k > best_coverage + 1.5:
+            best_centers = np.array(kept_centers)
+            best_coverage = coverage_k
+            
+        if coverage_k >= 95.0:
+            break
+            
+    return np.uint8(best_centers)
+
+def is_logo_or_graphic(img_arr):
+    """
+    Evaluates whether an image is a logo, icon, badge, sticker, typography, or vector art.
+    Measures the pixel concentration around dominant clusters.
+    """
+    pixels = img_arr.reshape((-1, 3)).astype(np.float32)
+    sample_size = min(30000, len(pixels))
+    idx = np.random.choice(len(pixels), sample_size, replace=False)
+    sample = pixels[idx]
+    
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.2)
     
-    # Try k=2 first
-    _, labels2, centers2 = cv2.kmeans(sample, 2, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
-    dists2 = np.linalg.norm(sample - centers2[labels2.flatten()], axis=1)
-    mean_err2 = float(np.mean(dists2))
-
-    if mean_err2 < 14.0:
-        return 2, np.uint8(centers2)
-
-    # Try k=3, 4, 6, 8, 12, 16
-    prev_err = mean_err2
-    best_k = 2
-    best_centers = centers2
-
-    for k in [3, 4, 6, 8, 12, 16]:
-        if k > max_k:
-            break
-        _, labels, centers = cv2.kmeans(sample, k, None, criteria, 4, cv2.KMEANS_PP_CENTERS)
-        dists = np.linalg.norm(sample - centers[labels.flatten()], axis=1)
-        err = float(np.mean(dists))
-        
-        # If error drops below 11 RGB levels or marginal improvement < 1.8, we found the true palette
-        if err < 11.0 or (prev_err - err) < 1.8:
-            return k, np.uint8(centers)
-        prev_err = err
-        best_k = k
-        best_centers = centers
-
-    return best_k, np.uint8(best_centers)
-
-def is_flat_logo_or_graphic(img):
-    """Detects whether an image is a flat brand logo, badge, typography, sticker, or vector art"""
-    w, h = img.size
-    thumb = img.resize((180, 180), Image.Resampling.BILINEAR)
-    arr = np.array(thumb)
+    # In logos and graphics, 2 to 6 colors account for >= 82% of all pixels or mean distance is small
+    _, labels, centers = cv2.kmeans(sample, 6, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
+    dists = np.linalg.norm(sample - centers[labels.flatten()], axis=1)
+    coverage = np.mean(dists < 16.0) * 100
+    mean_err = np.mean(dists)
     
-    # Quantize to 16-level bins to count distinct color regions
-    quant = (arr // 16) * 16
-    unique_clusters = len(np.unique(quant.reshape(-1, 3), axis=0))
-    return unique_clusters <= 48
+    return coverage >= 82.0 or mean_err < 14.0
 
 def vectorize_pro(input_path, output_svg_path, options=None):
     if options is None:
@@ -162,7 +241,7 @@ def vectorize_pro(input_path, output_svg_path, options=None):
 
     # Determine processing mode
     is_line_art = (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color')) or preset in ('cut_vinyl', 'silhouette', 'line_art')
-    is_logo_art = not is_line_art and (preset in ('logo', 'clipart') or colors_limit > 0 or (preset == 'auto' and is_flat_logo_or_graphic(clean_rgb_img)))
+    is_logo_art = not is_line_art and (preset in ('logo', 'clipart', 'auto') or colors_limit > 0 or is_logo_or_graphic(np.array(clean_rgb_img)))
 
     # -------------------------------------------------------------
     # CASE A: MONOCHROME LINE ART / SKETCH / STAMP / B&W DRAWING
@@ -257,11 +336,10 @@ def vectorize_pro(input_path, output_svg_path, options=None):
 
         # Anti-aliased Gaussian spatial guidance filter:
         # Dissolves discrete raster pixel steps into continuous gradient space!
-        blurred_rgb = cv2.GaussianBlur(arr_up, (5, 5), 1.1)
+        blurred_rgb = cv2.GaussianBlur(arr_up, (5, 5), 1.0)
         pixels_float = blurred_rgb.reshape((-1, 3)).astype(np.float32)
 
-        # Adaptive Dominant Color Snapping:
-        # Extracts true brand colors, eliminating 150+ false intermediate anti-aliasing color ribbons
+        # Extract genuine brand colors (with anti-bleed collinear pruning & near-duplicate merging)
         if colors_limit > 0:
             k = colors_limit
             sample_size = min(40000, len(pixels_float))
@@ -270,7 +348,7 @@ def vectorize_pro(input_path, output_svg_path, options=None):
             _, _, centers = cv2.kmeans(pixels_float[indices], k, None, criteria, 6, cv2.KMEANS_PP_CENTERS)
             final_centers = np.uint8(centers)
         else:
-            k, final_centers = get_dominant_colors_auto(pixels_float)
+            final_centers = extract_true_logo_palette(blurred_rgb)
 
         # Assign each pixel to the nearest genuine brand color center
         distances = np.linalg.norm(pixels_float[:, None, :] - final_centers[None, :, :].astype(np.float32), axis=2)
@@ -284,10 +362,10 @@ def vectorize_pro(input_path, output_svg_path, options=None):
         filter_speckle = int(options.get('filter_speckle', 10))
         color_precision = int(options.get('color_precision', 7))
         layer_difference = int(options.get('layer_difference', 20))
-        corner_threshold = int(options.get('corner_threshold', 82))
-        length_threshold = float(options.get('length_threshold', 8.0))
+        corner_threshold = int(options.get('corner_threshold', 80))
+        length_threshold = float(options.get('length_threshold', 7.5))
         max_iterations = int(options.get('max_iterations', 40))
-        splice_threshold = int(options.get('splice_threshold', 60))
+        splice_threshold = int(options.get('splice_threshold', 55))
         path_precision = int(options.get('path_precision', 2))
 
         # Use cutout mode when transparent background is requested so foreground shapes
