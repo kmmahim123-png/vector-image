@@ -1,12 +1,21 @@
 """
 Free Vector Image - Enterprise Pro Vector Engine
+Powered by VisionCortex VTracer Rust Core + Intelligent Sub-Pixel Pre-Filtering
 Combines:
-  1. Auto-Detection of Monochrome Line Art vs Full Color Artwork
-  2. For Line Art: Bilateral smoothing + Otsu thresholding + pure binary spline fitting (zero grey polygons)
-  3. For Color Art: Lanczos super-sampling + Bilateral edge-preserving denoising + K-Means color quantization
-  4. Automatic fake-checkerboard cleaner
-  5. Native Rust VTracer Engine with Cubic Bézier Splines
-  6. Clean standard SVG root element (no duplicate attributes)
+  1. Auto-Detection of Monochrome Line Art vs Logos/Graphics vs Full Color Artwork
+  2. For Line Art: Gaussian sub-pixel anti-aliasing + Otsu thresholding + pure binary spline fitting (zero grey polygons)
+  3. For Logos / Graphics / Typography:
+     - 2x/3x Lanczos super-sampling (expanding physical pixels into continuous sub-pixel grid)
+     - Anti-aliased Gaussian spatial guidance filter (dissolves discrete raster pixel steps into continuous gradient space)
+     - Adaptive Dominant Color Snapping (extracts true brand colors via K-Means, eliminating false anti-aliasing color ribbons)
+     - Organic Bézier Spline Fitting (corner_threshold: 82, length_threshold: 8.0, max_iterations: 40, splice_threshold: 60)
+     - Cutout mode on transparent background: cleanly isolates outer badge/shape from canvas corners
+  4. For Photos / Rich Art:
+     - Edge-preserving bilateral filter (cleans JPEG ringing/mosquito noise without median step-hardening)
+     - High color precision spline fitting
+  5. Automatic fake-checkerboard cleaner (cleans only genuine alternating grey/white checkerboards, never solid white backgrounds)
+  6. Instant transparent background handling (safely removes background without affecting internal white elements)
+  7. Standard, valid, responsive SVG root element (no duplicate attributes, sub-pixel viewBox)
 """
 
 import sys
@@ -77,6 +86,54 @@ def is_monochrome_image(img):
         return False
     return float(np.mean(diff < 18)) > 0.99
 
+def get_dominant_colors_auto(pixels_float, max_k=16):
+    """Finds optimal k dominant colors for a logo/graphic using reconstruction error elbow"""
+    sample_size = min(40000, len(pixels_float))
+    indices = np.random.choice(len(pixels_float), sample_size, replace=False)
+    sample = pixels_float[indices]
+
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.2)
+    
+    # Try k=2 first
+    _, labels2, centers2 = cv2.kmeans(sample, 2, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
+    dists2 = np.linalg.norm(sample - centers2[labels2.flatten()], axis=1)
+    mean_err2 = float(np.mean(dists2))
+
+    if mean_err2 < 14.0:
+        return 2, np.uint8(centers2)
+
+    # Try k=3, 4, 6, 8, 12, 16
+    prev_err = mean_err2
+    best_k = 2
+    best_centers = centers2
+
+    for k in [3, 4, 6, 8, 12, 16]:
+        if k > max_k:
+            break
+        _, labels, centers = cv2.kmeans(sample, k, None, criteria, 4, cv2.KMEANS_PP_CENTERS)
+        dists = np.linalg.norm(sample - centers[labels.flatten()], axis=1)
+        err = float(np.mean(dists))
+        
+        # If error drops below 11 RGB levels or marginal improvement < 1.8, we found the true palette
+        if err < 11.0 or (prev_err - err) < 1.8:
+            return k, np.uint8(centers)
+        prev_err = err
+        best_k = k
+        best_centers = centers
+
+    return best_k, np.uint8(best_centers)
+
+def is_flat_logo_or_graphic(img):
+    """Detects whether an image is a flat brand logo, badge, typography, sticker, or vector art"""
+    w, h = img.size
+    thumb = img.resize((180, 180), Image.Resampling.BILINEAR)
+    arr = np.array(thumb)
+    
+    # Quantize to 16-level bins to count distinct color regions
+    quant = (arr // 16) * 16
+    unique_clusters = len(np.unique(quant.reshape(-1, 3), axis=0))
+    return unique_clusters <= 48
+
 def vectorize_pro(input_path, output_svg_path, options=None):
     if options is None:
         options = {}
@@ -101,37 +158,35 @@ def vectorize_pro(input_path, output_svg_path, options=None):
 
     is_mono = is_monochrome_image(clean_rgb_img)
     preset = options.get('preset', 'auto')
+    colors_limit = int(options.get('colors_limit', 0))
 
-    # Adaptive super-sampling:
-    # Upscale low-res thumbnails (<600px) so Bézier splines have sub-pixel resolution.
-    # Keep large images (>=600px) at 1x to avoid magnifying JPEG compression noise!
-    scale = 2 if max(orig_w, orig_h) < 600 else 1
-    tw = orig_w * scale
-    th = orig_h * scale
+    # Determine processing mode
+    is_line_art = (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color')) or preset in ('cut_vinyl', 'silhouette', 'line_art')
+    is_logo_art = not is_line_art and (preset in ('logo', 'clipart') or colors_limit > 0 or (preset == 'auto' and is_flat_logo_or_graphic(clean_rgb_img)))
 
     # -------------------------------------------------------------
     # CASE A: MONOCHROME LINE ART / SKETCH / STAMP / B&W DRAWING
     # -------------------------------------------------------------
-    if (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color')) or preset in ('cut_vinyl', 'silhouette', 'line_art'):
+    if is_line_art:
+        scale = 3 if max(orig_w, orig_h) < 900 else 2
+        tw = orig_w * scale
+        th = orig_h * scale
+
         gray = clean_rgb_img.convert('L')
-        
-        if scale > 1:
-            gray_up = np.array(gray.resize((tw, th), Image.Resampling.LANCZOS))
-        else:
-            gray_up = np.array(gray)
+        gray_up = np.array(gray.resize((tw, th), Image.Resampling.LANCZOS))
 
         # Anti-aliased sub-pixel Gaussian pre-filter dissolves discrete pixel staircases into continuous gradient
-        denoised = cv2.GaussianBlur(gray_up, (7, 7), 2.0)
+        denoised = cv2.GaussianBlur(gray_up, (5, 5), 1.5)
         _, thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
         temp_thresh_path = input_path + "_thresh.png"
         cv2.imwrite(temp_thresh_path, thresh)
 
         filter_speckle = int(options.get('filter_speckle', 12))
-        corner_threshold = int(options.get('corner_threshold', 80))
-        length_threshold = float(options.get('length_threshold', 7.5))
-        max_iterations = int(options.get('max_iterations', 30))
-        splice_threshold = int(options.get('splice_threshold', 55))
+        corner_threshold = int(options.get('corner_threshold', 82))
+        length_threshold = float(options.get('length_threshold', 8.0))
+        max_iterations = int(options.get('max_iterations', 40))
+        splice_threshold = int(options.get('splice_threshold', 60))
         path_precision = int(options.get('path_precision', 2))
         
         vtracer.convert_image_to_svg_py(
@@ -189,117 +244,263 @@ def vectorize_pro(input_path, output_svg_path, options=None):
         }
 
     # -------------------------------------------------------------
-    # CASE B: FULL COLOR ARTWORK / ILLUSTRATION / PHOTO / LOGO
+    # CASE B: LOGO / BADGE / TYPOGRAPHY / FLAT VECTOR ART
     # -------------------------------------------------------------
-    if scale > 1:
-        img_up = clean_rgb_img.resize((tw, th), Image.Resampling.LANCZOS)
-    else:
-        img_up = clean_rgb_img
+    elif is_logo_art:
+        # Super-sampling scale (expand 1 physical pixel into 4 or 9 continuous sub-pixels)
+        scale = 3 if max(orig_w, orig_h) < 800 else 2
+        tw = orig_w * scale
+        th = orig_h * scale
 
-    arr = np.array(img_up)
-    bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+        up_img = clean_rgb_img.resize((tw, th), Image.Resampling.LANCZOS)
+        arr_up = np.array(up_img)
 
-    # Master AI Denoising:
-    # 1. Edge-preserving bilateral filter removes JPEG mosquito noise, ringing, and DCT block artifacts
-    # 2. Subtle median filter removes isolated compression specks and creates silky smooth contours
-    denoised = cv2.bilateralFilter(bgr, 9, 75, 75)
-    smooth_bgr = cv2.medianBlur(denoised, 3)
+        # Anti-aliased Gaussian spatial guidance filter:
+        # Dissolves discrete raster pixel steps into continuous gradient space!
+        blurred_rgb = cv2.GaussianBlur(arr_up, (5, 5), 1.1)
+        pixels_float = blurred_rgb.reshape((-1, 3)).astype(np.float32)
 
-    colors_limit = int(options.get('colors_limit', 0))
-    if colors_limit > 0:
-        pixels = smooth_bgr.reshape((-1, 3)).astype(np.float32)
-        sample_size = min(35000, len(pixels))
-        sample_indices = np.random.choice(len(pixels), sample_size, replace=False)
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 15, 0.2)
-        _, _, centers = cv2.kmeans(pixels[sample_indices], colors_limit, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
-        centers = np.uint8(centers)
-        distances = np.linalg.norm(pixels[:, None, :] - centers[None, :, :].astype(np.float32), axis=2)
+        # Adaptive Dominant Color Snapping:
+        # Extracts true brand colors, eliminating 150+ false intermediate anti-aliasing color ribbons
+        if colors_limit > 0:
+            k = colors_limit
+            sample_size = min(40000, len(pixels_float))
+            indices = np.random.choice(len(pixels_float), sample_size, replace=False)
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.2)
+            _, _, centers = cv2.kmeans(pixels_float[indices], k, None, criteria, 6, cv2.KMEANS_PP_CENTERS)
+            final_centers = np.uint8(centers)
+        else:
+            k, final_centers = get_dominant_colors_auto(pixels_float)
+
+        # Assign each pixel to the nearest genuine brand color center
+        distances = np.linalg.norm(pixels_float[:, None, :] - final_centers[None, :, :].astype(np.float32), axis=2)
         labels = np.argmin(distances, axis=1)
-        final_bgr = centers[labels].reshape(smooth_bgr.shape)
+        quantized = final_centers[labels].reshape(arr_up.shape)
+
+        temp_pre_path = input_path + "_logo_pre.png"
+        Image.fromarray(quantized).save(temp_pre_path)
+
+        # Spline parameters optimized for silky, organic, master-level Bézier curves
+        filter_speckle = int(options.get('filter_speckle', 10))
+        color_precision = int(options.get('color_precision', 7))
+        layer_difference = int(options.get('layer_difference', 20))
+        corner_threshold = int(options.get('corner_threshold', 82))
+        length_threshold = float(options.get('length_threshold', 8.0))
+        max_iterations = int(options.get('max_iterations', 40))
+        splice_threshold = int(options.get('splice_threshold', 60))
+        path_precision = int(options.get('path_precision', 2))
+
+        # Use cutout mode when transparent background is requested so foreground shapes
+        # (like circles and badges) are completely isolated from outer canvas corners!
+        hierarchical_mode = 'cutout' if transparent_bg else 'stacked'
+
+        vtracer.convert_image_to_svg_py(
+            temp_pre_path,
+            output_svg_path,
+            'color',
+            hierarchical_mode,
+            'spline',
+            filter_speckle,
+            color_precision,
+            layer_difference,
+            corner_threshold,
+            length_threshold,
+            max_iterations,
+            splice_threshold,
+            path_precision
+        )
+
+        try:
+            if os.path.exists(temp_pre_path):
+                os.remove(temp_pre_path)
+        except Exception:
+            pass
+
+        with open(output_svg_path, 'r', encoding='utf-8', errors='ignore') as f:
+            svg_content = f.read()
+
+        # Handle Transparent Background:
+        # Safely remove outer background paths without affecting internal white typography!
+        if transparent_bg:
+            bg_target_hex = rgb2hex(quantized[0, 0]).upper()
+            
+            # Identify paths that touch the canvas corners and match the background
+            path_blocks = re.findall(r'<path[^>]*d="([^"]+)"[^>]*fill="([^"]+)"[^>]*transform="translate\(([^)]+)\)"[^>]*>', svg_content)
+            for d, fill_col, trans in path_blocks:
+                fc = fill_col.upper()
+                rgb_c = hex2rgb(fc)
+                is_bg_color = (fc == bg_target_hex) or (rgb_c[0] > 235 and rgb_c[1] > 235 and rgb_c[2] > 235)
+                if is_bg_color:
+                    tx, ty = [float(x) for x in trans.split(',')]
+                    commands = re.findall(r'([MCZ])\s*([-\d.\s]*)', d)
+                    xs = [tx]
+                    ys = [ty]
+                    for cmd, args in commands:
+                        if cmd in ('M', 'C'):
+                            parts = [float(x) for x in args.strip().split()]
+                            if cmd == 'M':
+                                xs.append(tx + parts[0])
+                                ys.append(ty + parts[1])
+                            elif cmd == 'C':
+                                xs.append(tx + parts[4])
+                                ys.append(ty + parts[5])
+                    min_x, max_x = min(xs), max(xs)
+                    min_y, max_y = min(ys), max(ys)
+                    touches_corner = (
+                        (min_x <= 3 and min_y <= 3) or
+                        (max_x >= tw - 3 and min_y <= 3) or
+                        (min_x <= 3 and max_y >= th - 3) or
+                        (max_x >= tw - 3 and max_y >= th - 3)
+                    )
+                    # If this path touches the outer canvas corner, it is the outer background!
+                    if touches_corner:
+                        pattern = re.compile(r'<path[^>]*d="' + re.escape(d) + r'"[^>]*>')
+                        svg_content = pattern.sub('', svg_content, count=1)
+
+        # Clean SVG root tag (ensures viewBox matches traced tw, th exactly with sub-pixel geometric precision)
+        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
+        svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
+
+        # Extract palette
+        path_matches = re.findall(r'<path[^>]*fill="([^"]+)"[^>]*>', svg_content)
+        color_counts = {}
+        for c in path_matches:
+            if c.lower() not in ('none', 'transparent'):
+                color_counts[c.upper()] = color_counts.get(c.upper(), 0) + 1
+        total_paths = sum(color_counts.values()) or 1
+
+        palette_data = []
+        for c, cnt in sorted(color_counts.items(), key=lambda x: x[1], reverse=True):
+            palette_data.append({
+                'hex': c,
+                'count': cnt,
+                'percentage': round((cnt / total_paths) * 100, 1)
+            })
+
+        with open(output_svg_path, 'w', encoding='utf-8') as f:
+            f.write(svg_content)
+
+        return {
+            "success": True,
+            "width": tw,
+            "height": th,
+            "origWidth": orig_w,
+            "origHeight": orig_h,
+            "pathsCount": len(path_matches),
+            "colorsCount": len(palette_data),
+            "palette": palette_data[:32],
+            "svgSizeKb": round(len(svg_content) / 1024, 1),
+            "svgContent": svg_content
+        }
+
+    # -------------------------------------------------------------
+    # CASE C: FULL COLOR ARTWORK / ILLUSTRATION / PHOTO
+    # -------------------------------------------------------------
     else:
-        final_bgr = smooth_bgr
+        scale = 2
+        tw = orig_w * scale
+        th = orig_h * scale
 
-    temp_pre_path = input_path + "_color_pre.png"
-    cv2.imwrite(temp_pre_path, final_bgr)
+        img_up = clean_rgb_img.resize((tw, th), Image.Resampling.LANCZOS)
+        arr = np.array(img_up)
+        bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
-    filter_speckle = int(options.get('filter_speckle', 16))
-    color_precision = int(options.get('color_precision', 6))
-    layer_difference = int(options.get('layer_difference', 30))
-    corner_threshold = int(options.get('corner_threshold', 80))
-    length_threshold = float(options.get('length_threshold', 8.5))
-    max_iterations = int(options.get('max_iterations', 35))
-    splice_threshold = int(options.get('splice_threshold', 58))
-    path_precision = int(options.get('path_precision', 2))
+        # Edge-preserving bilateral filter: removes JPEG ringing/mosquito noise without median step-hardening
+        smooth_bgr = cv2.bilateralFilter(bgr, 7, 50, 50)
 
-    vtracer.convert_image_to_svg_py(
-        temp_pre_path,
-        output_svg_path,
-        'color',
-        'stacked',
-        'spline',
-        filter_speckle,
-        color_precision,
-        layer_difference,
-        corner_threshold,
-        length_threshold,
-        max_iterations,
-        splice_threshold,
-        path_precision
-    )
+        if colors_limit > 0:
+            pixels = smooth_bgr.reshape((-1, 3)).astype(np.float32)
+            sample_size = min(35000, len(pixels))
+            sample_indices = np.random.choice(len(pixels), sample_size, replace=False)
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 15, 0.2)
+            _, _, centers = cv2.kmeans(pixels[sample_indices], colors_limit, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
+            centers = np.uint8(centers)
+            distances = np.linalg.norm(pixels[:, None, :] - centers[None, :, :].astype(np.float32), axis=2)
+            labels = np.argmin(distances, axis=1)
+            final_bgr = centers[labels].reshape(smooth_bgr.shape)
+        else:
+            final_bgr = smooth_bgr
 
-    try:
-        if os.path.exists(temp_pre_path):
-            os.remove(temp_pre_path)
-    except Exception:
-        pass
+        temp_pre_path = input_path + "_color_pre.png"
+        cv2.imwrite(temp_pre_path, final_bgr)
 
-    with open(output_svg_path, 'r', encoding='utf-8', errors='ignore') as f:
-        svg_content = f.read()
+        filter_speckle = int(options.get('filter_speckle', 12))
+        color_precision = int(options.get('color_precision', 6))
+        layer_difference = int(options.get('layer_difference', 24))
+        corner_threshold = int(options.get('corner_threshold', 68))
+        length_threshold = float(options.get('length_threshold', 6.0))
+        max_iterations = int(options.get('max_iterations', 35))
+        splice_threshold = int(options.get('splice_threshold', 52))
+        path_precision = int(options.get('path_precision', 2))
 
-    # Transparent background handling:
-    if transparent_bg:
-        first_path_match = re.search(r'<path[^>]*d="([^"]*)"[^>]*fill="([^"]*)"[^>]*>', svg_content)
-        if first_path_match:
-            bg_col = first_path_match.group(2).upper()
-            d_val = first_path_match.group(1)
-            if bg_col in ('#FFFFFF', '#FEFEFE', '#FAFBFC', '#F5F4F2', '#FDFDFD', '#F9F9F9'):
-                svg_content = svg_content.replace(first_path_match.group(0), '', 1)
+        vtracer.convert_image_to_svg_py(
+            temp_pre_path,
+            output_svg_path,
+            'color',
+            'stacked',
+            'spline',
+            filter_speckle,
+            color_precision,
+            layer_difference,
+            corner_threshold,
+            length_threshold,
+            max_iterations,
+            splice_threshold,
+            path_precision
+        )
 
-    # Clean SVG root tag (ensures viewBox matches traced tw, th exactly with sub-pixel geometric precision)
-    svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
-    svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
+        try:
+            if os.path.exists(temp_pre_path):
+                os.remove(temp_pre_path)
+        except Exception:
+            pass
 
-    # Extract palette
-    palette_data = []
-    path_matches = re.findall(r'<path[^>]*fill="([^"]+)"[^>]*>', svg_content)
-    color_counts = {}
-    for c in path_matches:
-        if c.lower() not in ('none', 'transparent'):
-            color_counts[c] = color_counts.get(c, 0) + 1
-    total_paths = sum(color_counts.values()) or 1
+        with open(output_svg_path, 'r', encoding='utf-8', errors='ignore') as f:
+            svg_content = f.read()
 
-    for c, cnt in sorted(color_counts.items(), key=lambda x: x[1], reverse=True):
-        palette_data.append({
-            'hex': c.upper(),
-            'count': cnt,
-            'percentage': round((cnt / total_paths) * 100, 1)
-        })
+        # Transparent background handling
+        if transparent_bg:
+            first_path_match = re.search(r'<path[^>]*d="([^"]*)"[^>]*fill="([^"]*)"[^>]*>', svg_content)
+            if first_path_match:
+                bg_col = first_path_match.group(2).upper()
+                if bg_col in ('#FFFFFF', '#FEFEFE', '#FAFBFC', '#F5F4F2', '#FDFDFD', '#F9F9F9', '#FFFCFC'):
+                    svg_content = svg_content.replace(first_path_match.group(0), '', 1)
 
-    with open(output_svg_path, 'w', encoding='utf-8') as f:
-        f.write(svg_content)
+        # Clean SVG root tag
+        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
+        svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
 
-    return {
-        "success": True,
-        "width": tw,
-        "height": th,
-        "origWidth": orig_w,
-        "origHeight": orig_h,
-        "pathsCount": len(path_matches),
-        "colorsCount": len(palette_data),
-        "palette": palette_data[:32],
-        "svgSizeKb": round(len(svg_content) / 1024, 1),
-        "svgContent": svg_content
-    }
+        # Extract palette
+        palette_data = []
+        path_matches = re.findall(r'<path[^>]*fill="([^"]+)"[^>]*>', svg_content)
+        color_counts = {}
+        for c in path_matches:
+            if c.lower() not in ('none', 'transparent'):
+                color_counts[c.upper()] = color_counts.get(c.upper(), 0) + 1
+        total_paths = sum(color_counts.values()) or 1
+
+        for c, cnt in sorted(color_counts.items(), key=lambda x: x[1], reverse=True):
+            palette_data.append({
+                'hex': c,
+                'count': cnt,
+                'percentage': round((cnt / total_paths) * 100, 1)
+            })
+
+        with open(output_svg_path, 'w', encoding='utf-8') as f:
+            f.write(svg_content)
+
+        return {
+            "success": True,
+            "width": tw,
+            "height": th,
+            "origWidth": orig_w,
+            "origHeight": orig_h,
+            "pathsCount": len(path_matches),
+            "colorsCount": len(palette_data),
+            "palette": palette_data[:32],
+            "svgSizeKb": round(len(svg_content) / 1024, 1),
+            "svgContent": svg_content
+        }
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
