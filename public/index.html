@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vector Magic - Precision Raster to Vector Tracing Web App</title>
+  <meta name="description" content="Convert JPG, PNG, GIF bitmaps to clean SVG, EPS, PDF vector graphics with real full-color auto-tracing, reverse-engineered with REA.">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Vendor Dependencies -->
+  <script src="vendor/imagetracer.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="vm-navbar">
+    <div class="nav-container">
+      <a href="#" class="brand-wrapper" id="brand-home-link">
+        <div class="vm-logo-icon"></div>
+        <span class="brand-name">Vector Magic</span>
+        <span class="brand-badge">PRO</span>
+      </a>
+
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#learn">Learn</a></li>
+          <li><a href="#desktop">Desktop</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#support">Support</a></li>
+          <li><a href="#rea" id="rea-nav-link" style="color: #60a5fa; font-weight: 700;">REA Inspector</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="btn-secondary" id="nav-login-btn">Log In</button>
+        <button class="btn-primary" id="nav-create-btn">Create Account</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main id="app-main">
+
+    <!-- =========================================================================
+         HERO & UPLOAD SECTION
+         ========================================================================= -->
+    <section id="hero-section">
+      <div class="hero-wrapper">
+        <!-- Left Hero Copy & Drop Zone -->
+        <div class="hero-copy">
+          <span class="hero-eyebrow">Raster to vector, magically</span>
+          <h1 class="hero-title">
+            Turn your images into clean vector art <span class="hero-highlight">like magic.</span>
+          </h1>
+          <p class="hero-lead">
+            Vector Magic automatically converts JPG, PNG, GIF bitmaps to PDF, SVG, EPS vectors. Quickly get your artwork ready to print, embroider, cut, and more with the world's best full-color auto-tracer!
+          </p>
+
+          <!-- Upload Drop Zone -->
+          <div class="vm-drop-zone" id="drop-zone">
+            <input type="file" id="file-input" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" style="display: none;">
+            
+            <button class="vm-upload-wand-btn" id="upload-btn">
+              <span>✨</span>
+              <span>Vectorize Image</span>
+            </button>
+
+            <div class="vm-upload-labels">
+              <span class="vm-upload-main">Drag &amp; drop an image here</span>
+              <span class="vm-upload-sub">or paste one with <kbd>Ctrl</kbd> + <kbd>V</kbd></span>
+            </div>
+
+            <p class="upload-note">JPG, PNG, BMP, and GIF images up to 20 Megapixels</p>
+          </div>
+
+          <!-- Instant Trial Sample Images -->
+          <div class="samples-wrapper">
+            <div class="samples-title">Or try with an instant sample image:</div>
+            <div class="samples-grid">
+              <div class="sample-card" data-sample="whatsapp" title="Click to vectorize WhatsApp confirmation image">
+                <img id="sample-img-whatsapp" class="sample-thumb" alt="WhatsApp Image">
+                <span class="sample-label">WhatsApp Doc</span>
+              </div>
+              <div class="sample-card" data-sample="mascot" title="Click to vectorize Vector Magic Mascot Shield">
+                <img id="sample-img-mascot" class="sample-thumb" alt="Vector Mascot">
+                <span class="sample-label">Hurricane Mascot</span>
+              </div>
+              <div class="sample-card" data-sample="logo" title="Click to vectorize Tech Geometric Logo">
+                <img id="sample-img-logo" class="sample-thumb" alt="Tech Logo">
+                <span class="sample-label">Nexus Emblem</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Hero Interactive Demo Comparison Box -->
+        <div class="hero-stage">
+          <div class="hero-compare-box">
+            <!-- Under: Raster Pixelated Pane -->
+            <div class="hero-pane hero-pane-raster">
+              <img src="vendor/imagetracer.js" style="display:none;" alt="">
+              <svg viewBox="0 0 400 300" class="hero-pane-img" style="filter: blur(1.5px);">
+                <rect width="400" height="300" fill="#081220"/>
+                <circle cx="200" cy="150" r="90" fill="#eab819" />
+                <path d="M 140 150 Q 200 80 260 150 Q 200 220 140 150 Z" fill="#0f2744"/>
+                <circle cx="200" cy="150" r="28" fill="#e63946"/>
+                <text x="200" y="270" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="bold">VECTOR MAGIC</text>
+              </svg>
+            </div>
+
+            <!-- Over: Crisp Vector Pane (Clipped) -->
+            <div class="hero-pane hero-pane-vector" id="hero-vector-pane">
+              <svg viewBox="0 0 400 300" class="hero-pane-img" style="shape-rendering: geometricPrecision;">
+                <rect width="400" height="300" fill="#081220"/>
+                <circle cx="200" cy="150" r="90" fill="#eab819" stroke="#ffffff" stroke-width="3"/>
+                <path d="M 140 150 Q 200 80 260 150 Q 200 220 140 150 Z" fill="#0f2744" stroke="#ffffff" stroke-width="2"/>
+                <circle cx="200" cy="150" r="28" fill="#e63946"/>
+                <text x="200" y="270" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="bold">VECTOR MAGIC</text>
+              </svg>
+            </div>
+
+            <span class="hero-tag tag-raster">
+              <span>■</span> Original <small>PNG</small>
+            </span>
+            <span class="hero-tag tag-vector">
+              <span>✦</span> Vector Magic <small>SVG</small>
+            </span>
+
+            <input type="range" min="0" max="100" value="50" class="hero-compare-range" id="hero-compare-range" title="Drag to compare raster vs vector">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         PROCESSING ANIMATION VIEW
+         ========================================================================= -->
+    <section id="processing-section" class="processing-container">
+      <div class="processing-card">
+        <div class="wand-spinner">🪄</div>
+        <h2 style="font-size: 1.5rem; font-weight: 700;">Vectorizing Image...</h2>
+        
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-bar"></div>
+        </div>
+
+        <div class="progress-labels">
+          <span id="progress-status">Analyzing image features...</span>
+          <span id="progress-percent">0%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         RESULT SCREEN (MATCHING SCREENSHOT 2)
+         ========================================================================= -->
+    <section id="result-section" class="result-container">
+      <!-- Title Header Bar -->
+      <div class="result-header-bar">
+        <div class="result-title-group">
+          <h1 class="result-image-title" id="result-filename">WhatsApp Image 2026-10-16 at 12.01.59 PM.jpeg</h1>
+        </div>
+
+        <div class="result-actions-top">
+          <button class="btn-edit-result" id="btn-edit-result">
+            <span>✏️</span>
+            <span>Edit Result</span>
+          </button>
+          <button class="btn-secondary" id="btn-new-image">
+            <span>🔄</span>
+            <span>New Image</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Result Grid -->
+      <div class="result-layout">
+        
+        <!-- Left: Interactive Vector/Original Viewport -->
+        <div class="canvas-wrapper">
+          <div class="canvas-toolbar">
+            <!-- View Mode Selector -->
+            <div class="view-mode-group">
+              <button class="view-mode-btn active" data-mode="split">Split</button>
+              <button class="view-mode-btn" data-mode="side">Side-by-Side</button>
+              <button class="view-mode-btn" data-mode="vector">Vector</button>
+              <button class="view-mode-btn" data-mode="original">Original</button>
+              <button class="view-mode-btn" data-mode="wireframe">Wireframe</button>
+            </div>
+
+            <!-- Deep Zoom Controls -->
+            <div class="zoom-controls">
+              <button class="zoom-btn" id="zoom-out-btn" title="Zoom out">−</button>
+              <span class="zoom-level-text" id="zoom-level-text">100%</span>
+              <button class="zoom-btn" id="zoom-in-btn" title="Zoom in">+</button>
+              <button class="zoom-btn" id="zoom-reset-btn" title="Reset view" style="width: auto; padding: 0 0.5rem; font-size: 0.75rem;">Reset</button>
+            </div>
+          </div>
+
+          <!-- Viewport Stage -->
+          <div class="canvas-viewport" id="canvas-container">
+            <div class="viewer-stage" id="viewer-stage">
+              <!-- Original Raster Layer -->
+              <div class="pane-layer pane-original" id="pane-original">
+                <img id="original-image-view" alt="Original Bitmap">
+              </div>
+
+              <!-- Vectorized SVG Layer -->
+              <div class="pane-layer pane-vector" id="pane-vector">
+                <div id="vector-svg-container"></div>
+              </div>
+            </div>
+
+            <!-- Interactive Split Divider & Handle -->
+            <div class="split-divider" id="split-divider" style="left: 50%;">
+              <div class="split-handle" id="split-handle">↔</div>
+            </div>
+          </div>
+
+          <!-- Footer with Stats -->
+          <div class="canvas-footer">
+            <div class="stats-badge" id="stats-badge">
+              <span>🎨 Analyzing palette</span>
+            </div>
+            <div>
+              <span>Drag to Pan • Wheel to Zoom • Drag Divider to Compare</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Download Result Panel (Identical to Vector Magic UI) -->
+        <div class="download-panel">
+          <h2 class="download-title">Download Result</h2>
+
+          <!-- Fill only Card -->
+          <div class="download-card">
+            <h3 class="download-card-title">Fill only</h3>
+            <p class="download-card-desc">
+              Best for printing, cutting, engraving and embroidery, and opens in most programs.
+            </p>
+            <div class="btn-group-download">
+              <button class="btn-dl" id="dl-fill-svg" title="Download standard SVG vector">
+                <span>↓</span> SVG
+              </button>
+              <button class="btn-dl" id="dl-fill-eps" title="Download EPS Level 3 PostScript vector">
+                <span>↓</span> EPS
+              </button>
+              <button class="btn-dl" id="dl-fill-pdf" title="Download native vector PDF">
+                <span>↓</span> PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Stroke + Fill Card -->
+          <div class="download-card">
+            <h3 class="download-card-title">Stroke + Fill</h3>
+            <p class="download-card-desc">
+              Best for on-screen display: no thin white lines in viewers that draw them between shapes.
+            </p>
+            <div class="btn-group-download">
+              <button class="btn-dl" id="dl-stroke-svg" title="Download antialiased gap-free SVG">
+                <span>↓</span> SVG
+              </button>
+              <button class="btn-dl" id="dl-stroke-eps" title="Download gap-free EPS vector">
+                <span>↓</span> EPS
+              </button>
+              <button class="btn-dl" id="dl-stroke-pdf" title="Download gap-free PDF vector">
+                <span>↓</span> PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Extra Options -->
+          <div class="extra-export-row">
+            <button class="btn-raster-export" id="dl-hires-png">
+              <span>🖼️</span> Export 2x PNG
+            </button>
+            <button class="btn-raster-export" id="dl-hires-png-4x">
+              <span>🔍</span> Export 4x PNG (Ultra-Res)
+            </button>
+          </div>
+
+          <!-- Explanatory Difference Link -->
+          <a class="difference-link" id="diff-modal-trigger">What's the difference?</a>
+
+          <!-- REA Reverse-Engineering Feature Card -->
+          <div class="rea-inspector-card">
+            <div class="rea-card-info">
+              <h4><span>🔬</span> REA Reverse-Engineering Workbench</h4>
+              <p>Inspect decompiled pipeline, vector operators, and PostScript code generated by REA.</p>
+            </div>
+            <button class="btn-rea-open" id="rea-modal-trigger">Open REA</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================================
+       EDIT RESULT DRAWER
+       ========================================================================= -->
+  <aside class="edit-drawer" id="edit-drawer">
+    <div class="edit-drawer-header">
+      <h3>Edit Segmentation &amp; Colors</h3>
+      <button class="close-drawer-btn" id="close-edit-drawer">&times;</button>
+    </div>
+
+    <div class="edit-drawer-body">
+      <!-- Transparent Background Option -->
+      <div class="control-group">
+        <label class="toggle-switch-label">
+          <span>Remove Background (Transparent)</span>
+          <input type="checkbox" id="toggle-transparent-bg">
+        </label>
+      </div>
+
+      <!-- Presets -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Tracing Preset</span>
+        </div>
+        <div class="preset-pill-group">
+          <button class="preset-btn" data-preset="high">High</button>
+          <button class="preset-btn active" data-preset="medium">Medium</button>
+          <button class="preset-btn" data-preset="low">Low</button>
+          <button class="preset-btn" data-preset="logo">Logo</button>
+        </div>
+      </div>
+
+      <!-- Number of Colors -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Max Colors</span>
+          <span id="colors-count-val">16</span>
+        </div>
+        <input type="range" id="colors-count-slider" min="2" max="32" value="16">
+      </div>
+
+      <!-- Detail Level -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Detail Level (Tolerance)</span>
+        </div>
+        <input type="range" id="detail-slider" min="1" max="5" value="3">
+      </div>
+
+      <!-- Curve Smoothing -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Curve Smoothing</span>
+        </div>
+        <input type="range" id="smoothing-slider" min="0" max="4" value="1">
+      </div>
+
+      <!-- Despeckle / Noise -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Despeckle (Min Path Area)</span>
+        </div>
+        <input type="range" id="despeckle-slider" min="1" max="32" value="8">
+      </div>
+
+      <!-- Palette Color Inspector -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Detected Palette Layers</span>
+        </div>
+        <div class="palette-list" id="palette-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+
+    <div class="edit-drawer-footer">
+      <button class="btn-apply-edits" id="apply-edit-btn">Apply &amp; Re-vectorize</button>
+    </div>
+  </aside>
+
+  <!-- =========================================================================
+       MODAL: "WHAT'S THE DIFFERENCE?"
+       ========================================================================= -->
+  <div class="modal-backdrop" id="diff-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Fill only vs. Stroke + Fill</h3>
+        <button class="modal-close-btn" id="diff-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Vector formats use mathematical equations to represent shapes. When two adjacent shapes touch, standard vector renderers can produce subtle visual differences:
+        </p>
+
+        <div class="diagram-compare">
+          <div class="diagram-card">
+            <h5>Fill only (Precise Paths)</h5>
+            <p>
+              Contains strictly closed fill paths with no boundary strokes.
+            </p>
+            <p>
+              <strong>Best for:</strong> Vinyl cutting, CNC routers, laser engraving, embroidery digitizing, and CAD software where extra strokes would create unwanted duplicate cut-lines.
+            </p>
+          </div>
+          <div class="diagram-card">
+            <h5>Stroke + Fill (Gap-Free Display)</h5>
+            <p>
+              Adds a microscopic perimeter stroke in the matching fill color.
+            </p>
+            <p>
+              <strong>Best for:</strong> Web display, mobile screens, presentations, and print publishing. Eliminates sub-pixel anti-aliasing seams (the faint white hairline cracks between shapes).
+            </p>
+          </div>
+        </div>
+
+        <h4>Which one should I choose?</h4>
+        <p>
+          If you are unsure: for <strong>sign cutting or embroidery</strong>, download <strong>Fill only</strong>. For <strong>screen graphics, web logos, or slide decks</strong>, download <strong>Stroke + Fill</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: "REA REVERSE-ENGINEERING WORKBENCH"
+       ========================================================================= -->
+  <div class="modal-backdrop" id="rea-modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>🔬 REA Reverse-Engineering Workbench</h3>
+        <button class="modal-close-btn" id="rea-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>
+          This web application was engineered by analyzing Vector Magic's proprietary auto-tracing pipeline and reconstructing it down to the vector generation layer using the <strong>morluto/rea</strong> toolkit methodology.
+        </p>
+
+        <h4>Recovered Architecture Pipeline</h4>
+        <ol style="padding-left: 1.25rem; font-size: 0.9rem; line-height: 1.7;">
+          <li><strong>Color Quantization &amp; Clustering:</strong> K-Means deterministic sampling clustering high-dynamic range RGB into indexed color palettes.</li>
+          <li><strong>Layer Separation &amp; Contour Detection:</strong> Marching squares boundary extraction at half-pixel offsets.</li>
+          <li><strong>Path Smoothing &amp; Spline Fitting:</strong> Philip Schneider's recursive Bézier approximation and Douglas-Peucker point decimation.</li>
+          <li><strong>Dual PostScript &amp; PDF Translation:</strong> Elevation of quadratic splines into PostScript Level 3 cubic Béziers (<kbd>curveto</kbd>) and PDF vector graphics operators.</li>
+        </ol>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem;">
+          <h4>Inspect Output Code</h4>
+          <select id="raw-code-type" style="background: #0f223d; color: white; border: 1px solid #3c6396; padding: 0.3rem 0.6rem; border-radius: 4px;">
+            <option value="svg">SVG Code</option>
+            <option value="eps">EPS PostScript Level 3</option>
+            <option value="pdf">PDF-1.4 Stream</option>
+            <option value="json">Tracedata Model JSON</option>
+          </select>
+        </div>
+
+        <div class="code-box" id="raw-code-preview">// Vectorize an image to view reverse-engineered output code</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="vm-footer">
+    <div class="footer-content">
+      <div>
+        <strong>Vector Magic Web App</strong> • High Precision Full-Color Auto Tracer (Built with REA Reverse-Engineering Toolkit)
+      </div>
+      <div>
+        <span>SVG • EPS • PDF • PNG Output</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script src="js/exporters.js"></script>
+  <script src="js/tracer.js"></script>
+  <script src="js/samples.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
