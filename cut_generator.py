@@ -6,6 +6,7 @@ Generates die-cut, kiss-cut, and CNC outer toolpaths with zero overlapping lines
 import sys
 import json
 import os
+import re
 import cv2
 import numpy as np
 from PIL import Image
