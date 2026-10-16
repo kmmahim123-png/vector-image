@@ -557,9 +557,76 @@
       state.isDraggingSplit = true;
     });
 
+    // Touchscreen Support for Split Dragging (iOS / iPadOS / Android)
+    if (DOM.splitHandle) {
+      DOM.splitHandle.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        state.isDraggingSplit = true;
+      }, { passive: true });
+    }
+
+    // Touchscreen Support for Canvas Panning (1-finger drag)
+    DOM.canvasContainer.addEventListener('touchstart', (e) => {
+      if (e.target.closest('#split-handle') || e.target.closest('#split-divider')) return;
+      if (e.touches.length === 1) {
+        state.isPanning = true;
+        state.panStart = { x: e.touches[0].clientX - state.pan.x, y: e.touches[0].clientY - state.pan.y };
+        DOM.canvasContainer.classList.add('panning');
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (state.isDraggingSplit && e.touches.length > 0) {
+        const rect = DOM.canvasContainer.getBoundingClientRect();
+        const x = e.touches[0].clientX - rect.left;
+        const pct = (x / rect.width) * 100;
+        setSplitPosition(pct);
+      } else if (state.isPanning && e.touches.length === 1) {
+        state.pan.x = e.touches[0].clientX - state.panStart.x;
+        state.pan.y = e.touches[0].clientY - state.panStart.y;
+        applyTransform();
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      state.isPanning = false;
+      state.isDraggingSplit = false;
+      DOM.canvasContainer.classList.remove('panning');
+    });
+
+    // 1-Click Transparent Canvas Toggle Button
+    const btnToggleBg = document.getElementById('btn-toggle-bg-canvas');
+    if (btnToggleBg) {
+      btnToggleBg.addEventListener('click', () => {
+        state.transparentBg = !state.transparentBg;
+        btnToggleBg.classList.toggle('active', state.transparentBg);
+        btnToggleBg.innerHTML = state.transparentBg ? '☀️ Studio White BG' : '🏁 Transparent Canvas';
+
+        if (state.svgString) {
+          if (state.transparentBg) {
+            // Strip solid background rect/path
+            const match = state.svgString.match(/<path[^>]*fill="(#[Ff][A-Fa-f0-9]{5}|#[Ww][Hh][Ii][Tt][Ee])"[^>]*>/i);
+            if (match) {
+              state.svgString = state.svgString.replace(match[0], '');
+            }
+            state.svgString = state.svgString.replace(/<rect[^>]*fill="#ffffff"[^>]*\/>/i, '');
+          } else {
+            // Re-insert clean white studio background
+            if (!state.svgString.includes('<rect width="100%" height="100%" fill="#ffffff"/>')) {
+              state.svgString = state.svgString.replace(/(<svg\b[^>]*>)/i, '$1\n<rect width="100%" height="100%" fill="#ffffff"/>');
+            }
+          }
+          renderVectorPreview();
+        }
+      });
+    }
+
     document.querySelectorAll('.view-mode-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.view-mode-btn').forEach((b) => b.classList.remove('active'));
+        if (btn.id === 'btn-toggle-bg-canvas') return;
+        document.querySelectorAll('.view-mode-btn').forEach((b) => {
+          if (b.id !== 'btn-toggle-bg-canvas') b.classList.remove('active');
+        });
         btn.classList.add('active');
         state.viewMode = btn.dataset.mode;
         renderVectorPreview();

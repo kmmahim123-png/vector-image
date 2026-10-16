@@ -160,7 +160,7 @@ def vectorize_pro(input_path, output_svg_path, options=None):
             svg_content = f.read()
 
         # Clean SVG root tag (eliminate duplicate width/height attributes)
-        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
+        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
         if not transparent_bg:
             svg_root += f'\n<rect width="100%" height="100%" fill="#ffffff"/>'
         svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
@@ -226,9 +226,9 @@ def vectorize_pro(input_path, output_svg_path, options=None):
     color_precision = int(options.get('color_precision', 6))
     layer_difference = int(options.get('layer_difference', 30))
     corner_threshold = int(options.get('corner_threshold', 80))
-    length_threshold = float(options.get('length_threshold', 8.0))
-    max_iterations = int(options.get('max_iterations', 30))
-    splice_threshold = int(options.get('splice_threshold', 55))
+    length_threshold = float(options.get('length_threshold', 8.5))
+    max_iterations = int(options.get('max_iterations', 35))
+    splice_threshold = int(options.get('splice_threshold', 58))
     path_precision = int(options.get('path_precision', 2))
 
     vtracer.convert_image_to_svg_py(
@@ -265,13 +265,9 @@ def vectorize_pro(input_path, output_svg_path, options=None):
             if bg_col in ('#FFFFFF', '#FEFEFE', '#FAFBFC', '#F5F4F2', '#FDFDFD', '#F9F9F9'):
                 svg_content = svg_content.replace(first_path_match.group(0), '', 1)
 
-    # Clean SVG root tag (ensures viewBox matches traced tw, th exactly so 0% of art is clipped)
-    svg_content = re.sub(
-        r'<svg\b[^>]*>',
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">',
-        svg_content,
-        count=1
-    )
+    # Clean SVG root tag (ensures viewBox matches traced tw, th exactly with sub-pixel geometric precision)
+    svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
+    svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
 
     # Extract palette
     palette_data = []
