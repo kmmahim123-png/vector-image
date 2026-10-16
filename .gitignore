@@ -3,3 +3,8 @@ package-lock.json
 rea-repo/
 .DS_Store
 *.log
+__pycache__/
+*.pyc
+temp/*
+!temp/.gitkeep
+.env

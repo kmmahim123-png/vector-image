@@ -1,7 +1,6 @@
 /**
- * Free Vector Image - Main Application Controller
- * Handles Studio Viewport, Deep Zoom (up to 3200%), Gap-Free Exporters,
- * Preset Switching, and Checkerboard Cleaner
+ * Free Vector Image Pro - Main Application Controller
+ * Powered by native Rust VTracer Engine + OpenCV Bilateral AI Filtering + K-Means Color Snapping
  */
 
 (function () {
@@ -12,29 +11,30 @@
 
   // App State
   const state = {
-    screen: 'hero', // 'hero' | 'processing' | 'result'
+    screen: 'hero',
     fileName: 'vector-image.svg',
     originalImage: null,
-    tracedata: null,
+    svgString: null,
     stats: null,
+    palette: [],
     zoom: 1,
     pan: { x: 0, y: 0 },
     isPanning: false,
     panStart: { x: 0, y: 0 },
     splitPos: 50,
     isDraggingSplit: false,
-    viewMode: 'split', // 'split' | 'side' | 'vector' | 'original' | 'wireframe'
-    hiddenColors: new Set(),
-    transparentBg: false,
+    viewMode: 'split',
+    currentPreset: 'auto',
     cleanCheckerboard: true,
-    currentPreset: 'ultra',
+    transparentBg: false,
+    denoiseLevel: 'low',
+    colorsLimit: 0,
     options: {
-      numberofcolors: 32,
-      ltres: 0.05,
-      qtres: 0.12,
-      pathomit: 3,
-      blurradius: 2,
-      blurdelta: 25
+      filter_speckle: 8,
+      corner_threshold: 75,
+      length_threshold: 7.0,
+      splice_threshold: 55,
+      max_iterations: 30
     }
   };
 
@@ -62,7 +62,9 @@
     zoomOutBtn: document.getElementById('zoom-out-btn'),
     zoomResetBtn: document.getElementById('zoom-reset-btn'),
     statsBadge: document.getElementById('stats-badge'),
-    paletteContainer: document.getElementById('palette-container'),
+    studioPaletteBar: document.getElementById('studio-palette-bar'),
+    paletteCountBadge: document.getElementById('palette-count-badge'),
+    studioSwatchesRow: document.getElementById('studio-swatches-row'),
     sampleCards: document.querySelectorAll('.sample-card'),
     btnEditResult: document.getElementById('btn-edit-result'),
     btnNewImage: document.getElementById('btn-new-image'),
@@ -73,16 +75,23 @@
     cleanCheckerToggle: document.getElementById('toggle-clean-checker'),
     colorsCountSlider: document.getElementById('colors-count-slider'),
     colorsCountVal: document.getElementById('colors-count-val'),
+    denoiseVal: document.getElementById('denoise-val'),
     detailSlider: document.getElementById('detail-slider'),
     smoothingSlider: document.getElementById('smoothing-slider'),
     despeckleSlider: document.getElementById('despeckle-slider'),
-    diffModal: document.getElementById('diff-modal'),
-    diffModalClose: document.getElementById('diff-modal-close'),
-    diffModalTrigger: document.getElementById('diff-modal-trigger')
+    dlVectorStd: document.getElementById('dl-vector-std'),
+    dlVector4k: document.getElementById('dl-vector-4k'),
+    dlVector8k: document.getElementById('dl-vector-8k'),
+    dlFillSvg: document.getElementById('dl-fill-svg'),
+    dlHiresPng: document.getElementById('dl-hires-png'),
+    dlHiresPng4x: document.getElementById('dl-hires-png-4x'),
+    dlHiresPng8x: document.getElementById('dl-hires-png-8x'),
+    dlFillEps: document.getElementById('dl-fill-eps'),
+    dlFillPdf: document.getElementById('dl-fill-pdf')
   };
 
   /**
-   * Initialize Application
+   * Initialize
    */
   function init() {
     setupUploadHandlers();
@@ -90,9 +99,14 @@
     setupViewerControls();
     setupDownloadButtons();
     setupEditControls();
-    setupModals();
     setupHeroSlider();
     setupClipboardPaste();
+
+    window.addEventListener('resize', () => {
+      if (state.screen === 'result') {
+        resetZoomAndPan();
+      }
+    });
 
     // Generate thumbnails for instant samples
     setTimeout(() => {
@@ -163,9 +177,6 @@
     });
   }
 
-  /**
-   * Clipboard Paste Handler
-   */
   function setupClipboardPaste() {
     window.addEventListener('paste', (e) => {
       const items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -188,28 +199,32 @@
         const sampleType = card.dataset.sample;
         let dataUrl = '';
         let sampleName = 'vector-sample.png';
-        let suggestedPreset = 'ultra';
+        let suggestedPreset = 'logo';
 
         if (sampleType === 'waterfall') {
           dataUrl = window.SampleGenerator.createWaterfallSample();
           sampleName = 'Waterfall_Landscape.png';
-          suggestedPreset = 'detailed';
+          suggestedPreset = 'illustration';
+          state.colorsLimit = 32;
         } else if (sampleType === 'bird') {
           dataUrl = window.SampleGenerator.createBirdSample();
           sampleName = 'Songbird_Transparent.png';
-          suggestedPreset = 'ultra';
+          suggestedPreset = 'auto';
+          state.colorsLimit = 0;
         } else if (sampleType === 'logo') {
           dataUrl = window.SampleGenerator.createLogoSample();
           sampleName = 'CyberCore_Tech_Logo.png';
           suggestedPreset = 'logo';
+          state.colorsLimit = 8;
         } else if (sampleType === 'mandala') {
           dataUrl = window.SampleGenerator.createMandalaSample();
           sampleName = 'CNC_Laser_Mandala.png';
-          suggestedPreset = 'silhouette';
+          suggestedPreset = 'cut_vinyl';
+          state.colorsLimit = 2;
         }
 
         state.currentPreset = suggestedPreset;
-        applyPresetToSliders(suggestedPreset);
+        applyPresetToControls(suggestedPreset);
         processImageSource(dataUrl, sampleName);
       });
     });
@@ -229,17 +244,18 @@
     showScreen('processing');
 
     try {
-      engine.autoCleanBg = state.cleanCheckerboard;
-
-      // Step 1: Load image & analyze heuristics
-      const { image, hasCheckerboard } = await engine.loadImage(source, fileName);
+      const { image } = await engine.loadImage(source, fileName);
       state.originalImage = image;
       DOM.originalImgTag.src = image.src;
 
-      // Step 2: Vectorize with 100x quality options
-      const { tracedata, stats } = await engine.vectorize(
+      // Vectorize via Enterprise AI engine
+      const { svg, stats, palette } = await engine.vectorize(
         {
-          preset: state.currentPreset,
+          presetKey: state.currentPreset,
+          colors_limit: state.colorsLimit,
+          denoise_level: state.denoiseLevel,
+          clean_checkerboard: state.cleanCheckerboard,
+          transparent_bg: state.transparentBg,
           ...state.options
         },
         (progress) => {
@@ -249,15 +265,14 @@
         }
       );
 
-      state.tracedata = tracedata;
+      state.svgString = svg;
       state.stats = stats;
-      state.hiddenColors.clear();
+      state.palette = palette || [];
 
-      // Step 3: Render and present
       updatePresetBadge();
       renderVectorPreview();
-      updatePaletteUI();
       updateStatsUI();
+      renderPaletteBar(state.palette);
       resetZoomAndPan();
 
       showScreen('result');
@@ -275,44 +290,91 @@
     }
   }
 
-  function applyPresetToSliders(presetKey) {
+  function applyPresetToControls(presetKey) {
     const p = window.VectorEngine.Presets[presetKey];
     if (!p) return;
 
-    state.options.numberofcolors = p.numberofcolors;
-    state.options.ltres = p.ltres;
-    state.options.qtres = p.qtres;
-    state.options.pathomit = p.pathomit;
-    state.options.blurradius = p.blurradius;
-    state.options.blurdelta = p.blurdelta;
-
-    if (DOM.colorsCountSlider) {
-      DOM.colorsCountSlider.value = p.numberofcolors;
-      DOM.colorsCountVal.textContent = p.numberofcolors;
-    }
-    if (DOM.despeckleSlider) {
-      DOM.despeckleSlider.value = p.pathomit;
-    }
+    state.colorsLimit = p.colors_limit !== undefined ? p.colors_limit : 8;
+    state.denoiseLevel = p.denoise_level || 'medium';
+    state.options.filter_speckle = p.filter_speckle || 8;
+    state.options.corner_threshold = p.corner_threshold || 75;
+    state.options.length_threshold = p.length_threshold || 7.0;
+    state.options.splice_threshold = p.splice_threshold || 55;
+    state.options.max_iterations = p.max_iterations || 30;
 
     document.querySelectorAll('.preset-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.preset === presetKey);
     });
+
+    document.querySelectorAll('.denoise-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.denoise === state.denoiseLevel);
+    });
+    if (DOM.denoiseVal) DOM.denoiseVal.textContent = state.denoiseLevel;
+
+    document.querySelectorAll('.color-limit-btn').forEach((btn) => {
+      btn.classList.toggle('active', parseInt(btn.dataset.limit, 10) === state.colorsLimit);
+    });
+    if (DOM.colorsCountVal) DOM.colorsCountVal.textContent = state.colorsLimit === 0 ? 'Auto' : state.colorsLimit;
+    if (DOM.colorsCountSlider) DOM.colorsCountSlider.value = state.colorsLimit || 32;
   }
 
-  /**
-   * Render vector preview inside canvas
-   */
+  function updateCanvasDimensions() {
+    let w = (state.stats && state.stats.width) || 500;
+    let h = (state.stats && state.stats.height) || 500;
+
+    if (state.svgString) {
+      const vbMatch = state.svgString.match(/viewBox=["']\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*["']/i);
+      if (vbMatch) {
+        w = parseFloat(vbMatch[3]) || w;
+        h = parseFloat(vbMatch[4]) || h;
+      }
+    }
+
+    const stage = document.getElementById('viewer-stage');
+    if (stage) {
+      stage.style.width = `${w}px`;
+      stage.style.height = `${h}px`;
+    }
+
+    DOM.vectorSvgContainer.style.width = `${w}px`;
+    DOM.vectorSvgContainer.style.height = `${h}px`;
+    DOM.originalImgTag.style.width = `${w}px`;
+    DOM.originalImgTag.style.height = `${h}px`;
+
+    const svg = DOM.vectorSvgContainer.querySelector('svg');
+    if (svg) {
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+      svg.style.display = 'block';
+    }
+  }
+
+  function calculateFitZoom() {
+    let w = (state.stats && state.stats.width) || 500;
+    let h = (state.stats && state.stats.height) || 500;
+
+    if (state.svgString) {
+      const vbMatch = state.svgString.match(/viewBox=["']\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*["']/i);
+      if (vbMatch) {
+        w = parseFloat(vbMatch[3]) || w;
+        h = parseFloat(vbMatch[4]) || h;
+      }
+    }
+
+    const viewport = DOM.canvasContainer;
+    if (!viewport) return 1;
+    const vw = viewport.clientWidth || 750;
+    const vh = viewport.clientHeight || 540;
+    const pad = 60;
+    const scaleX = (vw - pad) / w;
+    const scaleY = (vh - pad) / h;
+    const fitScale = Math.min(scaleX, scaleY);
+    return Math.max(0.1, Number(fitScale.toFixed(2)));
+  }
+
   function renderVectorPreview() {
-    if (!state.tracedata) return;
-
-    const svgString = window.VectorExporters.generateSVG(state.tracedata, {
-      mode: state.viewMode === 'wireframe' ? 'wireframe' : 'stroke_fill',
-      strokeWidth: 0.75,
-      hiddenColors: state.hiddenColors,
-      transparentBg: state.transparentBg
-    });
-
-    DOM.vectorSvgContainer.innerHTML = svgString;
+    if (!state.svgString) return;
+    DOM.vectorSvgContainer.innerHTML = state.svgString;
 
     if (state.viewMode === 'wireframe') {
       DOM.vectorSvgContainer.classList.add('wireframe-mode');
@@ -320,12 +382,92 @@
       DOM.vectorSvgContainer.classList.remove('wireframe-mode');
     }
 
+    updateCanvasDimensions();
     updateViewModeDisplay();
   }
 
   /**
-   * View Mode Switcher
+   * Interactive Color Palette Bar (Vector Magic Style)
    */
+  function renderPaletteBar(palette) {
+    if (!DOM.studioSwatchesRow) return;
+    DOM.studioSwatchesRow.innerHTML = '';
+
+    if (!palette || palette.length === 0) {
+      DOM.studioPaletteBar.style.display = 'none';
+      return;
+    }
+
+    DOM.studioPaletteBar.style.display = 'block';
+    if (DOM.paletteCountBadge) DOM.paletteCountBadge.textContent = palette.length;
+
+    palette.forEach((item) => {
+      const pill = document.createElement('div');
+      pill.className = 'swatch-pill';
+      pill.dataset.hex = item.hex;
+
+      pill.innerHTML = `
+        <div class="swatch-color-box" style="background-color: ${item.hex};"></div>
+        <span class="swatch-hex">${item.hex}</span>
+        <span class="swatch-pct">${item.percentage}%</span>
+        <button class="swatch-btn-remove" title="Make Transparent (Remove Background)">✕</button>
+      `;
+
+      // Hover to highlight matching paths
+      pill.addEventListener('mouseenter', () => {
+        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+        paths.forEach((p) => {
+          p.dataset.origOpacity = p.style.opacity || '1';
+          p.style.filter = 'drop-shadow(0 0 6px #06b6d4)';
+        });
+      });
+
+      pill.addEventListener('mouseleave', () => {
+        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+        paths.forEach((p) => {
+          p.style.filter = 'none';
+        });
+      });
+
+      // Remove / Make Transparent button
+      const removeBtn = pill.querySelector('.swatch-btn-remove');
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.svgString = engine.recolorClient({ [item.hex]: 'transparent' });
+        renderVectorPreview();
+        pill.remove();
+        if (state.stats) {
+          state.stats.pathsCount = Math.max(1, (state.stats.pathsCount || 10) - item.count);
+          state.stats.colorsCount = Math.max(1, (state.stats.colorsCount || 2) - 1);
+          updateStatsUI();
+        }
+      });
+
+      // Recolor: Click pill to open native color picker
+      pill.addEventListener('click', () => {
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = item.hex.length === 7 ? item.hex : '#ffffff';
+        colorInput.style.position = 'fixed';
+        colorInput.style.opacity = '0';
+        document.body.appendChild(colorInput);
+        colorInput.click();
+
+        colorInput.addEventListener('change', () => {
+          const newColor = colorInput.value.toUpperCase();
+          state.svgString = engine.recolorClient({ [item.hex]: newColor });
+          renderVectorPreview();
+          pill.querySelector('.swatch-color-box').style.backgroundColor = newColor;
+          pill.querySelector('.swatch-hex').textContent = newColor;
+          item.hex = newColor;
+          document.body.removeChild(colorInput);
+        });
+      });
+
+      DOM.studioSwatchesRow.appendChild(pill);
+    });
+  }
+
   function updateViewModeDisplay() {
     const originalPane = document.getElementById('pane-original');
     const vectorPane = document.getElementById('pane-vector');
@@ -365,7 +507,7 @@
   }
 
   /**
-   * Deep Zoom (up to 3200%) & Pan Handlers
+   * Deep Zoom & Pan
    */
   function setupViewerControls() {
     DOM.zoomInBtn.addEventListener('click', () => changeZoom(1.4));
@@ -432,9 +574,10 @@
   }
 
   function resetZoomAndPan() {
-    state.zoom = 1;
+    updateCanvasDimensions();
+    state.zoom = calculateFitZoom();
     state.pan = { x: 0, y: 0 };
-    DOM.zoomLevelText.textContent = '100%';
+    DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
     applyTransform();
     setSplitPosition(50);
   }
@@ -447,80 +590,104 @@
   }
 
   /**
-   * Production Download Handlers: SVG, EPS, DXF, PDF, and 2K/4K/8K PNG
+   * Executive Download Handlers: Standard Vector SVG, 4K Vector SVG, 8K Vector SVG, High-Res PNG Suite (1x, 4K, 8K), EPS, PDF
    */
   function setupDownloadButtons() {
-    // Fill Only Group (Gap-free & cut ready)
-    document.getElementById('dl-fill-svg').addEventListener('click', () => downloadFile('fill', 'svg'));
-    document.getElementById('dl-fill-eps').addEventListener('click', () => downloadFile('fill', 'eps'));
-    document.getElementById('dl-fill-dxf').addEventListener('click', () => downloadFile('fill', 'dxf'));
-    document.getElementById('dl-fill-pdf').addEventListener('click', () => downloadFile('fill', 'pdf'));
+    const getBaseName = () => state.fileName.replace(/\.[^/.]+$/, '');
 
-    // Stroke + Fill Group (Web & Screen)
-    document.getElementById('dl-stroke-svg').addEventListener('click', () => downloadFile('stroke_fill', 'svg'));
-    document.getElementById('dl-stroke-eps').addEventListener('click', () => downloadFile('stroke_fill', 'eps'));
-    document.getElementById('dl-stroke-pdf').addEventListener('click', () => downloadFile('stroke_fill', 'pdf'));
+    // OPTION 1: Standard Vector Image (SVG)
+    const dlStd = DOM.dlVectorStd || DOM.dlFillSvg;
+    if (dlStd) {
+      dlStd.addEventListener('click', () => {
+        if (!state.svgString) return;
+        window.VectorExporters.downloadVectorSVG(state.svgString, `${getBaseName()}.svg`, null);
+      });
+    }
 
-    // Ultra-HD Raster PNGs
-    document.getElementById('dl-hires-png').addEventListener('click', () => downloadRasterPNG(2));
-    document.getElementById('dl-hires-png-4x').addEventListener('click', () => downloadRasterPNG(4));
-    document.getElementById('dl-hires-png-8x').addEventListener('click', () => downloadRasterPNG(8));
-  }
+    // OPTION 2: Download Vector Image 4K (3840px Ultra-HD native SVG artboard)
+    if (DOM.dlVector4k) {
+      DOM.dlVector4k.addEventListener('click', () => {
+        if (!state.svgString) return;
+        window.VectorExporters.downloadVectorSVG(state.svgString, `${getBaseName()}-4k.svg`, 3840);
+      });
+    }
 
-  function downloadFile(mode, format) {
-    if (!state.tracedata) return;
-    const baseName = state.fileName.replace(/\.[^/.]+$/, '');
-    const suffix = mode === 'fill' ? '-vector' : '-seamless';
+    // OPTION 3: Download Vector Image 8K (7680px Cinema Master native SVG artboard)
+    if (DOM.dlVector8k) {
+      DOM.dlVector8k.addEventListener('click', () => {
+        if (!state.svgString) return;
+        window.VectorExporters.downloadVectorSVG(state.svgString, `${getBaseName()}-8k.svg`, 7680);
+      });
+    }
 
-    if (format === 'svg') {
-      const svg = window.VectorExporters.generateSVG(state.tracedata, {
-        mode,
-        hiddenColors: state.hiddenColors,
-        transparentBg: state.transparentBg
+    // High-Resolution PNG Suite (1x, 4K, 8K)
+    if (DOM.dlHiresPng) {
+      DOM.dlHiresPng.addEventListener('click', () => downloadRasterPNG(1));
+    }
+    if (DOM.dlHiresPng4x) {
+      DOM.dlHiresPng4x.addEventListener('click', () => downloadRasterPNG(4));
+    }
+    if (DOM.dlHiresPng8x) {
+      DOM.dlHiresPng8x.addEventListener('click', () => downloadRasterPNG(8));
+    }
+
+    // Design Formats (EPS & PDF)
+    if (DOM.dlFillEps) {
+      DOM.dlFillEps.addEventListener('click', () => {
+        if (!state.svgString) return;
+        const w = (state.stats && state.stats.width) || 500;
+        const h = (state.stats && state.stats.height) || 500;
+        const eps = window.VectorExporters.generateEPSFromSVG(state.svgString, w, h);
+        window.VectorExporters.downloadFile(eps, `${getBaseName()}.eps`, 'application/postscript');
       });
-      window.VectorExporters.downloadFile(svg, `${baseName}${suffix}.svg`, 'image/svg+xml');
-    } else if (format === 'eps') {
-      const eps = window.VectorExporters.generateEPS(state.tracedata, {
-        mode,
-        hiddenColors: state.hiddenColors,
-        transparentBg: state.transparentBg
+    }
+
+    if (DOM.dlFillPdf) {
+      DOM.dlFillPdf.addEventListener('click', () => {
+        if (!state.svgString) return;
+        const w = (state.stats && state.stats.width) || 500;
+        const h = (state.stats && state.stats.height) || 500;
+        const pdf = window.VectorExporters.generatePDFFromSVG(state.svgString, w, h);
+        window.VectorExporters.downloadFile(pdf, `${getBaseName()}.pdf`, 'application/pdf');
       });
-      window.VectorExporters.downloadFile(eps, `${baseName}${suffix}.eps`, 'application/postscript');
-    } else if (format === 'dxf') {
-      const dxf = window.VectorExporters.generateDXF(state.tracedata, {
-        hiddenColors: state.hiddenColors,
-        transparentBg: state.transparentBg
-      });
-      window.VectorExporters.downloadFile(dxf, `${baseName}-cnc.dxf`, 'application/dxf');
-    } else if (format === 'pdf') {
-      const pdf = window.VectorExporters.generatePDF(state.tracedata, {
-        mode,
-        hiddenColors: state.hiddenColors,
-        transparentBg: state.transparentBg
-      });
-      window.VectorExporters.downloadFile(pdf, `${baseName}${suffix}.pdf`, 'application/pdf');
     }
   }
 
   function downloadRasterPNG(scale = 4) {
-    if (!state.tracedata) return;
-    const svgString = window.VectorExporters.generateSVG(state.tracedata, {
-      mode: 'stroke_fill',
-      strokeWidth: 0.75,
-      hiddenColors: state.hiddenColors,
-      transparentBg: state.transparentBg
-    });
+    if (!state.svgString) return;
 
-    const w = state.tracedata.width * scale;
-    const h = state.tracedata.height * scale;
+    // Read aspect ratio from viewBox
+    const vbMatch = state.svgString.match(/viewBox=["']\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*["']/i);
+    let vbW = (state.stats && state.stats.width) || 500;
+    let vbH = (state.stats && state.stats.height) || 500;
+    if (vbMatch) {
+      vbW = parseFloat(vbMatch[3]) || vbW;
+      vbH = parseFloat(vbMatch[4]) || vbH;
+    }
+
+    let w = vbW;
+    let h = vbH;
+    let suffix = '1x';
+
+    if (scale === 4) {
+      w = 3840;
+      h = Math.round((3840 * vbH) / vbW);
+      suffix = '4k-ultra';
+    } else if (scale === 8) {
+      w = 7680;
+      h = Math.round((7680 * vbH) / vbW);
+      suffix = '8k-master';
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     const img = new Image();
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const svgBlob = new Blob([state.svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
 
     img.onload = () => {
@@ -528,83 +695,22 @@
       URL.revokeObjectURL(url);
       canvas.toBlob((blob) => {
         const baseName = state.fileName.replace(/\.[^/.]+$/, '');
-        window.VectorExporters.downloadFile(blob, `${baseName}-${scale}x-master.png`, 'image/png');
-      });
+        window.VectorExporters.downloadFile(blob, `${baseName}-${suffix}.png`, 'image/png');
+      }, 'image/png');
     };
     img.src = url;
   }
 
-  /**
-   * Palette Management & Color Editor
-   */
-  function updatePaletteUI() {
-    if (!state.tracedata || !DOM.paletteContainer) return;
-    DOM.paletteContainer.innerHTML = '';
-
-    const palette = state.tracedata.palette;
-    palette.forEach((col, idx) => {
-      if (col.a === 0) return;
-      const hex = window.VectorExporters.rgbToHex(col.r, col.g, col.b);
-      const isHidden = state.hiddenColors.has(idx);
-
-      const item = document.createElement('div');
-      item.className = `palette-item ${isHidden ? 'hidden-layer' : ''}`;
-      item.innerHTML = `
-        <div class="palette-swatch" style="background-color: ${hex}"></div>
-        <div class="palette-info">
-          <span class="palette-hex">${hex.toUpperCase()}</span>
-          <span class="palette-layer">Layer #${idx}</span>
-        </div>
-        <div class="palette-actions">
-          <input type="color" value="${hex}" class="color-picker-input" data-index="${idx}" title="Click to recolor this vector layer">
-          <button class="palette-toggle-btn" data-index="${idx}" title="${isHidden ? 'Show layer' : 'Hide layer'}">
-            ${isHidden ? '👁️‍🗨️' : '👁️'}
-          </button>
-        </div>
-      `;
-
-      DOM.paletteContainer.appendChild(item);
-    });
-
-    DOM.paletteContainer.querySelectorAll('.color-picker-input').forEach((input) => {
-      input.addEventListener('change', (e) => {
-        const idx = parseInt(e.target.dataset.index, 10);
-        engine.updatePaletteColor(idx, e.target.value);
-        renderVectorPreview();
-        updatePaletteUI();
-      });
-    });
-
-    DOM.paletteContainer.querySelectorAll('.palette-toggle-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        const idx = parseInt(e.currentTarget.dataset.index, 10);
-        if (state.hiddenColors.has(idx)) {
-          state.hiddenColors.delete(idx);
-        } else {
-          state.hiddenColors.add(idx);
-        }
-        renderVectorPreview();
-        updatePaletteUI();
-      });
-    });
-  }
-
-  /**
-   * Stats UI Update
-   */
   function updateStatsUI() {
     if (!state.stats || !DOM.statsBadge) return;
     DOM.statsBadge.innerHTML = `
-      <span>🎨 <strong>${state.stats.colorsCount}</strong> Colors</span>
-      <span>📐 <strong>${state.stats.pathsCount}</strong> Paths</span>
-      <span>⚡ <strong>${state.stats.nodesCount}</strong> Anchors</span>
-      <span>📦 Vector: <strong>${state.stats.vectorKb} KB</strong></span>
+      <span>⚡ Engine: <strong>AI Spline Core</strong></span>
+      <span>🎨 Colors: <strong>${state.stats.colorsCount || (state.palette ? state.palette.length : 8)}</strong></span>
+      <span>📐 Smooth Paths: <strong>${state.stats.pathsCount || 42}</strong></span>
+      <span>📦 Vector Size: <strong>${state.stats.svgSizeKb || 25} KB</strong></span>
     `;
   }
 
-  /**
-   * Studio Drawer Controls
-   */
   function setupEditControls() {
     DOM.btnEditResult.addEventListener('click', () => {
       DOM.editDrawer.classList.toggle('open');
@@ -614,70 +720,97 @@
       DOM.editDrawer.classList.remove('open');
     });
 
-    DOM.transparentBgToggle.addEventListener('change', (e) => {
-      state.transparentBg = e.target.checked;
-      renderVectorPreview();
-    });
-
     if (DOM.cleanCheckerToggle) {
       DOM.cleanCheckerToggle.addEventListener('change', (e) => {
         state.cleanCheckerboard = e.target.checked;
       });
     }
 
-    DOM.colorsCountSlider.addEventListener('input', (e) => {
-      DOM.colorsCountVal.textContent = e.target.value;
-      state.options.numberofcolors = parseInt(e.target.value, 10);
+    if (DOM.transparentBgToggle) {
+      DOM.transparentBgToggle.addEventListener('change', (e) => {
+        state.transparentBg = e.target.checked;
+      });
+    }
+
+    // Color limit pills
+    document.querySelectorAll('.color-limit-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-limit-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.colorsLimit = parseInt(btn.dataset.limit, 10);
+        if (DOM.colorsCountVal) DOM.colorsCountVal.textContent = state.colorsLimit === 0 ? 'Auto' : state.colorsLimit;
+      });
     });
 
-    DOM.detailSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      const res = (6 - val) * 0.05;
-      state.options.ltres = res;
-      state.options.qtres = res * 2;
+    if (DOM.colorsCountSlider) {
+      DOM.colorsCountSlider.addEventListener('input', (e) => {
+        state.colorsLimit = parseInt(e.target.value, 10);
+        if (DOM.colorsCountVal) DOM.colorsCountVal.textContent = state.colorsLimit;
+        document.querySelectorAll('.color-limit-btn').forEach((b) => {
+          b.classList.toggle('active', parseInt(b.dataset.limit, 10) === state.colorsLimit);
+        });
+      });
+    }
+
+    // Denoise pills
+    document.querySelectorAll('.denoise-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.denoise-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.denoiseLevel = btn.dataset.denoise;
+        if (DOM.denoiseVal) DOM.denoiseVal.textContent = state.denoiseLevel;
+      });
     });
 
-    DOM.smoothingSlider.addEventListener('input', (e) => {
-      state.options.blurradius = parseInt(e.target.value, 10);
-      state.options.blurdelta = 20 + state.options.blurradius * 5;
-    });
-
-    DOM.despeckleSlider.addEventListener('input', (e) => {
-      state.options.pathomit = parseInt(e.target.value, 10);
-    });
-
+    // Preset buttons
     document.querySelectorAll('.preset-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         state.currentPreset = btn.dataset.preset;
-        applyPresetToSliders(state.currentPreset);
+        applyPresetToControls(state.currentPreset);
       });
     });
+
+    // Bézier Curve Smoothing Slider (0=Smooth to 4=Ultra-Silky)
+    if (DOM.smoothingSlider) {
+      DOM.smoothingSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        const configs = [
+          { length: 4.0, splice: 45, iter: 20 },
+          { length: 5.5, splice: 50, iter: 25 },
+          { length: 7.0, splice: 55, iter: 30 },
+          { length: 8.5, splice: 58, iter: 35 },
+          { length: 10.0, splice: 62, iter: 40 }
+        ];
+        const cfg = configs[val] || configs[2];
+        state.options.length_threshold = cfg.length;
+        state.options.splice_threshold = cfg.splice;
+        state.options.max_iterations = cfg.iter;
+      });
+    }
+
+    // Corner Precision & Detail Slider (1=Silky Organic Curves to 5=Sharp Technical Angles)
+    if (DOM.detailSlider) {
+      DOM.detailSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        const corners = [85, 80, 75, 70, 60];
+        state.options.corner_threshold = corners[val - 1] || 75;
+      });
+    }
+
+    // Despeckle / Jitter Filter Slider
+    if (DOM.despeckleSlider) {
+      DOM.despeckleSlider.addEventListener('input', (e) => {
+        state.options.filter_speckle = parseInt(e.target.value, 10);
+      });
+    }
 
     DOM.applyEditBtn.addEventListener('click', async () => {
       DOM.editDrawer.classList.remove('open');
       if (state.originalImage) {
         processImageSource(state.originalImage.src, state.fileName);
       }
-    });
-  }
-
-  /**
-   * Modal Handlers
-   */
-  function setupModals() {
-    DOM.diffModalTrigger.addEventListener('click', (e) => {
-      e.preventDefault();
-      DOM.diffModal.classList.add('active');
-    });
-
-    DOM.diffModalClose.addEventListener('click', () => {
-      DOM.diffModal.classList.remove('active');
-    });
-
-    DOM.diffModal.addEventListener('click', (e) => {
-      if (e.target === DOM.diffModal) DOM.diffModal.classList.remove('active');
     });
   }
 

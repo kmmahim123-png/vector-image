@@ -1,10 +1,6 @@
 /**
- * Free Vector Image - 100x Quality Vector Tracing Engine
- * Features:
- * - Smart Fake-PNG / Checkerboard Background Detection & Removal
- * - Multi-pass edge-preserving smoothing (eliminates jagged pixel staircases)
- * - Ultra-smooth Bézier curve fitting
- * - Rich color palette quantization up to 48 colors (no blotchy banding)
+ * Free Vector Image Pro - Client Vector Engine Bridge
+ * Dispatches vectorization to native Rust VTracer Engine + OpenCV Bilateral AI Filtering
  */
 
 (function (window) {
@@ -13,84 +9,106 @@
   class VectorEngine {
     constructor() {
       this.currentImage = null;
-      this.rawImageData = null;
-      this.processedImageData = null;
-      this.tracedata = null;
-      this.activeOptions = null;
+      this.dataUrl = null;
       this.fileName = 'vector-image.png';
+      this.currentSvg = null;
+      this.stats = null;
+      this.palette = [];
       this.isProcessing = false;
-      this.hasCheckerboard = false;
-      this.autoCleanBg = true;
     }
 
     /**
-     * 100x Quality Presets
+     * Enterprise Presets for $100/mo Professional Vector Production
      */
     static Presets = {
-      ultra: {
-        name: 'Ultra-Smooth (Best Quality)',
-        description: 'Maximum Bézier curve smoothness, zero jagged edges, rich 32-color palette.',
-        numberofcolors: 32,
-        colorsampling: 2,
-        colorquantcycles: 5,
-        mincolorratio: 0.001,
-        ltres: 0.05,
-        qtres: 0.12,
-        pathomit: 3,
-        rightangleenhance: false,
-        blurradius: 2,
-        blurdelta: 25,
-        linefilter: true
-      },
-      detailed: {
-        name: 'Detailed Art & Landscape',
-        description: 'High-fidelity 48-color quantization for complex scenes, waterfalls, and photos.',
-        numberofcolors: 48,
-        colorsampling: 2,
-        colorquantcycles: 5,
-        mincolorratio: 0.0005,
-        ltres: 0.08,
-        qtres: 0.15,
-        pathomit: 2,
-        rightangleenhance: false,
-        blurradius: 2,
-        blurdelta: 30,
-        linefilter: true
+      auto: {
+        name: 'Auto Precision (Exact Colors)',
+        description: 'Preserves 100% of rich colors, smooth curves, and continuous sub-pixel contours.',
+        preset: 'auto',
+        colors_limit: 0,
+        denoise_level: 'low',
+        super_sampling: 2,
+        filter_speckle: 8,
+        corner_threshold: 75,
+        length_threshold: 7.0,
+        splice_threshold: 55,
+        max_iterations: 30,
+        clean_checkerboard: true
       },
       logo: {
-        name: 'Clean Logo & Graphic',
-        description: 'Crisp geometric contours, right-angle corner preservation, and clean fills.',
-        numberofcolors: 16,
-        colorsampling: 2,
-        colorquantcycles: 4,
-        mincolorratio: 0.002,
-        ltres: 0.2,
-        qtres: 0.3,
-        pathomit: 4,
-        rightangleenhance: true,
-        blurradius: 1,
-        blurdelta: 15,
-        linefilter: true
+        name: 'Clean Logo & Badge',
+        description: 'Silky smooth contours, right-angle corner detection, 8 dominant brand colors, zero halos.',
+        preset: 'logo',
+        colors_limit: 8,
+        denoise_level: 'medium',
+        super_sampling: 2,
+        filter_speckle: 8,
+        corner_threshold: 75,
+        length_threshold: 7.0,
+        splice_threshold: 55,
+        max_iterations: 30,
+        clean_checkerboard: true
       },
-      silhouette: {
-        name: 'Silhouette & Line Art',
-        description: 'Pure high-contrast bi-level vectorization for icons, stamps, and signatures.',
-        numberofcolors: 2,
-        colorsampling: 2,
-        colorquantcycles: 5,
-        mincolorratio: 0.001,
-        ltres: 0.1,
-        qtres: 0.2,
-        pathomit: 2,
-        rightangleenhance: true,
-        blurradius: 1,
-        blurdelta: 10,
-        linefilter: true
+      clipart: {
+        name: 'Graphic & Clipart',
+        description: 'Silky smooth Bézier curves, 16 distinct colors, stacked layers for zero white seams.',
+        preset: 'ultra',
+        colors_limit: 16,
+        denoise_level: 'medium',
+        super_sampling: 2,
+        filter_speckle: 8,
+        corner_threshold: 75,
+        length_threshold: 7.0,
+        splice_threshold: 55,
+        max_iterations: 30,
+        clean_checkerboard: true
+      },
+      illustration: {
+        name: 'Illustration & Art',
+        description: 'Rich 32-color palette, fine curve details, perfect for complex graphics and landscapes.',
+        preset: 'detailed',
+        colors_limit: 32,
+        denoise_level: 'medium',
+        super_sampling: 2,
+        filter_speckle: 6,
+        corner_threshold: 75,
+        length_threshold: 6.0,
+        splice_threshold: 55,
+        max_iterations: 30,
+        clean_checkerboard: true
+      },
+      cut_vinyl: {
+        name: 'Laser & Vinyl Cutter',
+        description: 'Monochrome closed cut contours with silky Bézier splines for CNC, vinyl, and laser cutting.',
+        preset: 'cut_vinyl',
+        colors_limit: 2,
+        denoise_level: 'high',
+        super_sampling: 2,
+        filter_speckle: 8,
+        corner_threshold: 80,
+        length_threshold: 7.0,
+        splice_threshold: 55,
+        max_iterations: 30,
+        clean_checkerboard: true
+      },
+      photo: {
+        name: 'Photo / High-Fidelity',
+        description: 'Maximum color fidelity and gradients with smooth, natural transitions.',
+        preset: 'detailed',
+        colors_limit: 0, // Auto / full
+        denoise_level: 'low',
+        super_sampling: 2,
+        filter_speckle: 6,
+        corner_threshold: 75,
+        length_threshold: 5.0,
+        splice_threshold: 55,
+        max_iterations: 30,
+        clean_checkerboard: false
       }
     };
 
     /**
-     * Load image from file or URL and perform smart pre-processing
+     * Load image from file, blob, or URL
      */
     loadImage(source, name = 'vector-image.png') {
       return new Promise((resolve, reject) => {
@@ -101,45 +119,33 @@
         img.onload = () => {
           this.currentImage = img;
 
-          // Optimal resolution scaling
-          const maxDim = 1600;
-          let w = img.naturalWidth || img.width;
-          let h = img.naturalHeight || img.height;
-
-          if (w > maxDim || h > maxDim) {
-            const ratio = Math.min(maxDim / w, maxDim / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-          }
-
+          // Convert to dataURL
           const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          ctx.drawImage(img, 0, 0, w, h);
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
 
-          this.rawImageData = ctx.getImageData(0, 0, w, h);
-          this.hasCheckerboard = this.detectCheckerboard(this.rawImageData);
-
-          // Apply smart cleanup
-          this.processedImageData = this.cleanImageBuffer(this.rawImageData, this.autoCleanBg);
-
+          this.dataUrl = canvas.toDataURL('image/png');
           resolve({
             image: img,
-            width: w,
-            height: h,
-            hasCheckerboard: this.hasCheckerboard
+            width: canvas.width,
+            height: canvas.height
           });
         };
 
-        img.onerror = () => reject(new Error('Failed to load image source'));
+        img.onerror = () => reject(new Error('Failed to load image'));
 
         if (source instanceof File || source instanceof Blob) {
           const reader = new FileReader();
-          reader.onload = (e) => (img.src = e.target.result);
+          reader.onload = (e) => {
+            this.dataUrl = e.target.result;
+            img.src = e.target.result;
+          };
           reader.onerror = reject;
           reader.readAsDataURL(source);
         } else if (typeof source === 'string') {
+          this.dataUrl = source;
           img.src = source;
         } else {
           reject(new Error('Unsupported source format'));
@@ -148,130 +154,59 @@
     }
 
     /**
-     * Detect fake PNG checkerboard pattern in background
-     */
-    detectCheckerboard(imgData) {
-      const { width, height, data } = imgData;
-      let checkPixels = 0;
-      let totalSamples = 0;
-
-      // Sample boundary strips (top 30 rows and left 30 cols)
-      const sampleLimitY = Math.min(height, 35);
-      const sampleLimitX = Math.min(width, 35);
-
-      for (let y = 0; y < sampleLimitY; y += 2) {
-        for (let x = 0; x < sampleLimitX; x += 2) {
-          const idx = (y * width + x) * 4;
-          const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-          const isWhite = r > 245 && g > 245 && b > 245;
-          const isLightGrey = Math.abs(r - g) < 6 && Math.abs(g - b) < 6 && r >= 190 && r <= 235;
-
-          if (isWhite || isLightGrey) checkPixels++;
-          totalSamples++;
-        }
-      }
-
-      const ratio = checkPixels / totalSamples;
-      return ratio > 0.65;
-    }
-
-    /**
-     * Intelligent Pre-Processing:
-     * - Removes fake checkerboard pattern squares (turns them transparent)
-     * - Filters isolated salt-and-pepper pixel noise
-     */
-    cleanImageBuffer(imgData, removeCheckerboard = true) {
-      const { width, height } = imgData;
-      const copy = new ImageData(new Uint8ClampedArray(imgData.data), width, height);
-      const data = copy.data;
-
-      if (removeCheckerboard && this.hasCheckerboard) {
-        // Flood background removal for checkerboard tiles
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i], g = data[i + 1], b = data[i + 2];
-          const isWhite = r > 240 && g > 240 && b > 240;
-          const isLightGrey = Math.abs(r - g) < 8 && Math.abs(g - b) < 8 && r >= 185 && r <= 235;
-
-          if (isWhite || isLightGrey) {
-            data[i + 3] = 0; // Set transparent
-          }
-        }
-      }
-
-      return copy;
-    }
-
-    /**
-     * Run the 100x Quality Vector Tracing Pipeline
+     * Execute Enterprise Pro Vectorization
      */
     async vectorize(customOpts = {}, onProgress = () => {}) {
-      if (!this.processedImageData) {
+      if (!this.dataUrl) {
         throw new Error('No image loaded to vectorize');
       }
 
       this.isProcessing = true;
 
       try {
-        onProgress({ stage: 'Applying edge-preserving Gaussian smoothing', percent: 15 });
-        await new Promise((r) => setTimeout(r, 40));
+        onProgress({ stage: '1/3 AI Super-Sampling & Bilateral Edge Denoising...', percent: 25 });
+        await new Promise((r) => setTimeout(r, 60));
 
-        const presetKey = customOpts.preset || 'ultra';
-        const basePreset = VectorEngine.Presets[presetKey] || VectorEngine.Presets.ultra;
+        const presetKey = customOpts.presetKey || 'clipart';
+        const basePreset = VectorEngine.Presets[presetKey] || VectorEngine.Presets.clipart;
 
         const options = {
           ...basePreset,
-          ...customOpts,
-          roundcoords: 3,
-          viewbox: true
+          ...customOpts
         };
-        this.activeOptions = options;
 
-        onProgress({ stage: 'Running multi-pass color quantization (up to ' + options.numberofcolors + ' colors)', percent: 40 });
-        await new Promise((r) => setTimeout(r, 50));
+        onProgress({ stage: '2/3 Fitting Continuous Cubic Bézier Splines...', percent: 65 });
 
-        onProgress({ stage: 'Tracing sub-pixel contours & closed loops', percent: 68 });
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Call ImageTracer
-        const tracedata = window.ImageTracer.imagedataToTracedata(this.processedImageData, options);
-        this.tracedata = tracedata;
-
-        onProgress({ stage: 'Fitting smooth Bézier splines & closing seams', percent: 90 });
-        await new Promise((r) => setTimeout(r, 40));
-
-        // Compute detailed vector statistics
-        let totalPaths = 0;
-        let totalSegments = 0;
-        let totalNodes = 0;
-
-        tracedata.layers.forEach((layer) => {
-          totalPaths += layer.length;
-          layer.forEach((path) => {
-            const segs = path.segments || [];
-            totalSegments += segs.length;
-            totalNodes += segs.length;
-          });
+        const response = await fetch('/api/vectorize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: this.dataUrl,
+            options: options
+          })
         });
 
-        const estimatedSvgKb = Math.round((totalSegments * 45) / 1024);
-        const originalKb = Math.round((this.processedImageData.width * this.processedImageData.height * 4) / 1024);
-        const compression = Math.max(1, Math.round((originalKb / Math.max(1, estimatedSvgKb)) * 10) / 10);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'Vectorization failed on server');
+        }
 
-        const stats = {
-          colorsCount: tracedata.palette.length,
-          pathsCount: totalPaths,
-          segmentsCount: totalSegments,
-          nodesCount: totalNodes,
-          width: tracedata.width,
-          height: tracedata.height,
-          vectorKb: estimatedSvgKb,
-          compression: `${compression}x`,
-          presetName: basePreset.name
-        };
+        const data = await response.json();
+        if (!data.success || !data.svg) {
+          throw new Error(data.error || 'Vectorization returned no SVG');
+        }
 
-        onProgress({ stage: 'Vectorization Complete', percent: 100, stats });
+        this.currentSvg = data.svg;
+        this.stats = data.stats || {};
+        this.palette = data.palette || [];
+
+        onProgress({ stage: '3/3 Vectorization Complete (Enterprise Pro Quality)', percent: 100, stats: this.stats });
         this.isProcessing = false;
-        return { tracedata, stats };
+        return {
+          svg: data.svg,
+          stats: this.stats,
+          palette: this.palette
+        };
       } catch (err) {
         this.isProcessing = false;
         throw err;
@@ -279,16 +214,27 @@
     }
 
     /**
-     * Update palette color
+     * Dynamic client-side recoloring without server roundtrip
      */
-    updatePaletteColor(colorIndex, newHex) {
-      if (!this.tracedata || !this.tracedata.palette[colorIndex]) return;
-      const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(newHex);
-      if (match) {
-        this.tracedata.palette[colorIndex].r = parseInt(match[1], 16);
-        this.tracedata.palette[colorIndex].g = parseInt(match[2], 16);
-        this.tracedata.palette[colorIndex].b = parseInt(match[3], 16);
+    recolorClient(colorMapping) {
+      if (!this.currentSvg) return this.currentSvg;
+
+      let updatedSvg = this.currentSvg;
+      for (const [oldHex, newHex] of Object.entries(colorMapping)) {
+        if (newHex.toLowerCase() === 'transparent' || newHex.toLowerCase() === 'none') {
+          // Remove paths
+          const regex = new RegExp(`<path[^>]*fill="${oldHex}"[^>]*\\/?>`, 'gi');
+          updatedSvg = updatedSvg.replace(regex, '');
+          const pairRegex = new RegExp(`<path[^>]*fill="${oldHex}"[^>]*>[\\s\\S]*?<\\/path>`, 'gi');
+          updatedSvg = updatedSvg.replace(pairRegex, '');
+        } else {
+          const regex = new RegExp(`fill="${oldHex}"`, 'gi');
+          updatedSvg = updatedSvg.replace(regex, `fill="${newHex}"`);
+        }
       }
+
+      this.currentSvg = updatedSvg;
+      return updatedSvg;
     }
   }
 

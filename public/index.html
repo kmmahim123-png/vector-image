@@ -331,87 +331,110 @@
               <span>Drag to Pan • Wheel to Zoom (up to 3,200%) • Drag Handle to Inspect</span>
             </div>
           </div>
+
+          <!-- Interactive Color Palette Bar -->
+          <div class="interactive-palette-bar" id="studio-palette-bar">
+            <div class="palette-bar-header">
+              <span class="palette-bar-title">🎨 Extracted Brand Colors (<span id="palette-count-badge">0</span> Colors)</span>
+              <span class="palette-bar-hint">Click ✕ to Remove Background • Click swatch to Recolor</span>
+            </div>
+            <div class="palette-swatches-scroll" id="studio-swatches-row">
+              <!-- Dynamically populated with interactive color swatches -->
+            </div>
+          </div>
         </div>
 
-        <!-- Right: Production Download Hub -->
+        <!-- Right: Streamlined Top-Developer Download Studio -->
         <div class="download-panel">
           <div class="download-title-wrapper">
-            <h2 class="download-title">Download Result</h2>
-            <span class="commercial-license-tag">✓ 100% Free &amp; Commercial Safe</span>
+            <h2 class="download-title">Download Studio</h2>
+            <span class="commercial-license-tag">✓ Lossless Vector • Commercial Safe</span>
           </div>
 
-          <!-- Card 1: Fill only (Gap-Free & Cut Ready) -->
-          <div class="export-card">
+          <!-- PRIMARY: Exactly 3 Vector Image Options -->
+          <div class="vector-suite-card">
+            <div class="vector-suite-header">
+              <span class="vector-suite-badge">✦ PURE VECTOR SUITE (SVG)</span>
+              <span class="vector-suite-quality">Zero White Gaps • Smooth Splines</span>
+            </div>
+
+            <!-- Option 1: Standard Vector SVG -->
+            <button class="btn-vector-opt btn-vector-std" id="dl-vector-std" title="Download Standard Vector SVG">
+              <div class="btn-vector-icon">↓</div>
+              <div class="btn-vector-text">
+                <span class="btn-vector-title">Download Vector Image</span>
+                <span class="btn-vector-sub">Standard SVG • Infinite Bézier Resolution</span>
+              </div>
+              <span class="btn-vector-pill">SVG</span>
+            </button>
+
+            <!-- Option 2: 4K Vector SVG -->
+            <button class="btn-vector-opt btn-vector-4k" id="dl-vector-4k" title="Download 4K Ultra-HD Vector SVG">
+              <div class="btn-vector-icon">⭐</div>
+              <div class="btn-vector-text">
+                <span class="btn-vector-title">Download Vector Image 4K</span>
+                <span class="btn-vector-sub">Ultra-HD SVG • 3840px Native Canvas</span>
+              </div>
+              <span class="btn-vector-pill pill-4k">4K SVG</span>
+            </button>
+
+            <!-- Option 3: 8K Vector SVG -->
+            <button class="btn-vector-opt btn-vector-8k" id="dl-vector-8k" title="Download 8K Cinema Master Vector SVG">
+              <div class="btn-vector-icon">💎</div>
+              <div class="btn-vector-text">
+                <span class="btn-vector-title">Download Vector Image 8K</span>
+                <span class="btn-vector-sub">Cinema Master SVG • 7680px Print Canvas</span>
+              </div>
+              <span class="btn-vector-pill pill-8k">8K SVG</span>
+            </button>
+          </div>
+
+          <!-- SECONDARY: High-Resolution PNG Suite (1x, 4K, 8K) Together Without Clutter -->
+          <div class="export-card png-suite-card">
             <div class="export-card-title-row">
               <h3 class="export-card-title">
-                <span>Fill only</span>
+                <span>🖼️ High-Res PNG Suite</span>
               </h3>
-              <span class="badge-cnc">Printing, Cutting &amp; CNC</span>
+              <span class="badge-png-direct">Direct Vector Render</span>
             </div>
             <p class="export-card-desc">
-              Closed vector paths with matching boundary closure. Best for vinyl cutters, laser engraving, embroidery, and printing without white gap seams.
+              Crisp pixel-rendered raster images directly from smooth vector curves:
             </p>
-            <div class="btn-grid-export">
-              <button class="btn-export-action" id="dl-fill-svg" title="Download Standard W3C SVG">
-                <span>↓ SVG</span>
-                <span class="btn-export-sub">Standard Vector</span>
+            <div class="png-suite-compact-grid">
+              <button class="btn-png-compact" id="dl-hires-png">
+                <span class="png-compact-title">↓ PNG 1×</span>
+                <span class="png-compact-sub">Standard</span>
               </button>
-              <button class="btn-export-action" id="dl-fill-eps" title="Download PostScript Level 3 EPS">
-                <span>↓ EPS</span>
+              <button class="btn-png-compact highlight-4k" id="dl-hires-png-4x">
+                <span class="png-compact-title">⭐ PNG 4K</span>
+                <span class="png-compact-sub">3840px UHD</span>
+              </button>
+              <button class="btn-png-compact highlight-8k" id="dl-hires-png-8x">
+                <span class="png-compact-title">💎 PNG 8K</span>
+                <span class="png-compact-sub">7680px Master</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Professional Formats: EPS & PDF -->
+          <div class="export-card print-formats-card">
+            <div class="export-card-title-row">
+              <h3 class="export-card-title" style="font-size: 0.9rem; color: #94a3b8;">
+                <span>Print &amp; Design Masters (EPS &amp; PDF)</span>
+              </h3>
+            </div>
+            <div class="btn-grid-export" style="grid-template-columns: 1fr 1fr; margin-top: 0.25rem;">
+              <button class="btn-export-action" id="dl-fill-eps" title="Download EPS format">
+                <span>↓ EPS Level 3</span>
                 <span class="btn-export-sub">Illustrator / Corel</span>
               </button>
-              <button class="btn-export-action" id="dl-fill-dxf" title="Download AutoCAD DXF format" style="border-color: #f59e0b;">
-                <span style="color: #f59e0b;">↓ DXF</span>
-                <span class="btn-export-sub">AutoCAD / CNC</span>
-              </button>
               <button class="btn-export-action" id="dl-fill-pdf" title="Download Vector PDF">
-                <span>↓ PDF</span>
-                <span class="btn-export-sub">Vector PDF-1.4</span>
+                <span>↓ Vector PDF</span>
+                <span class="btn-export-sub">PDF-1.4 Spec</span>
               </button>
             </div>
           </div>
-
-          <!-- Card 2: Stroke + Fill (Screen & Print Publishing) -->
-          <div class="export-card">
-            <div class="export-card-title-row">
-              <h3 class="export-card-title">
-                <span>Stroke + Fill</span>
-              </h3>
-              <span class="badge-cnc" style="border-color: #06b6d4; color: #06b6d4; background: rgba(6,182,212,0.15);">Web &amp; Screen</span>
-            </div>
-            <p class="export-card-desc">
-              Perimeter stroke matching fill color to eliminate thin white lines in viewers that draw them between shapes.
-            </p>
-            <div class="btn-grid-export btn-grid-export-3">
-              <button class="btn-export-action" id="dl-stroke-svg" title="Download Gap-Free SVG">
-                <span>↓ SVG</span>
-                <span class="btn-export-sub">Seamless SVG</span>
-              </button>
-              <button class="btn-export-action" id="dl-stroke-eps" title="Download Gap-Free EPS">
-                <span>↓ EPS</span>
-                <span class="btn-export-sub">Print Ready EPS</span>
-              </button>
-              <button class="btn-export-action" id="dl-stroke-pdf" title="Download Gap-Free PDF">
-                <span>↓ PDF</span>
-                <span class="btn-export-sub">High-DPI PDF</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Card 3: Ultra-HD Raster Export -->
-          <div class="export-card">
-            <h3 class="export-card-title">Ultra-HD Master Render</h3>
-            <p class="export-card-desc">
-              Render vector paths back into supersampled raster images at 2K, 4K, or 8K resolution.
-            </p>
-            <div class="raster-options-row">
-              <button class="btn-raster-pill" id="dl-hires-png">2K PNG (2×)</button>
-              <button class="btn-raster-pill" id="dl-hires-png-4x" style="border-color: #06b6d4;">4K Ultra (4×)</button>
-              <button class="btn-raster-pill" id="dl-hires-png-8x">8K Master (8×)</button>
-            </div>
-          </div>
-
-          <a class="link-difference" id="diff-modal-trigger">What's the difference between Fill Only &amp; Stroke + Fill?</a>
+        </div>
         </div>
 
       </div>
@@ -513,23 +536,47 @@
       <!-- 100x Quality Presets -->
       <div class="control-group">
         <div class="control-label">
-          <span>Quality Preset</span>
+          <span>Enterprise Preset</span>
         </div>
         <div class="preset-pill-group" style="grid-template-columns: repeat(2, 1fr);">
-          <button class="preset-btn active" data-preset="ultra">🌟 Ultra-Smooth</button>
-          <button class="preset-btn" data-preset="detailed">🎨 Landscape/Art</button>
-          <button class="preset-btn" data-preset="logo">⚡ Crisp Logo</button>
-          <button class="preset-btn" data-preset="silhouette">✂️ Silhouette</button>
+          <button class="preset-btn active" data-preset="logo">⚡ Crisp Logo (8c)</button>
+          <button class="preset-btn" data-preset="clipart">🎨 Clipart (16c)</button>
+          <button class="preset-btn" data-preset="illustration">🖼️ Illustration (32c)</button>
+          <button class="preset-btn" data-preset="cut_vinyl">✂️ Laser/Vinyl (2c)</button>
+          <button class="preset-btn" data-preset="photo" style="grid-column: span 2;">📸 Photo / High-Fidelity</button>
         </div>
       </div>
 
-      <!-- Max Colors Slider -->
+      <!-- Bilateral Denoising / Anti-Aliasing -->
       <div class="control-group">
         <div class="control-label">
-          <span>Max Color Quantization</span>
-          <span id="colors-count-val">32</span>
+          <span>AI Bilateral Edge Smoothing</span>
+          <span id="denoise-val">Medium</span>
         </div>
-        <input type="range" id="colors-count-slider" min="2" max="48" value="32">
+        <div class="preset-pill-group" style="grid-template-columns: repeat(5, 1fr);">
+          <button class="denoise-btn" data-denoise="none">Off</button>
+          <button class="denoise-btn" data-denoise="low">Low</button>
+          <button class="denoise-btn active" data-denoise="medium">Med</button>
+          <button class="denoise-btn" data-denoise="high">High</button>
+          <button class="denoise-btn" data-denoise="ultra">Ultra</button>
+        </div>
+      </div>
+
+      <!-- Exact Color Quantization -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Target Color Count</span>
+          <span id="colors-count-val">8</span>
+        </div>
+        <div class="preset-pill-group" style="grid-template-columns: repeat(6, 1fr);">
+          <button class="color-limit-btn" data-limit="2">2c</button>
+          <button class="color-limit-btn" data-limit="4">4c</button>
+          <button class="color-limit-btn active" data-limit="8">8c</button>
+          <button class="color-limit-btn" data-limit="16">16c</button>
+          <button class="color-limit-btn" data-limit="32">32c</button>
+          <button class="color-limit-btn" data-limit="0">Auto</button>
+        </div>
+        <input type="range" id="colors-count-slider" min="2" max="48" value="8" style="margin-top: 0.5rem;">
       </div>
 
       <!-- Detail Level -->
