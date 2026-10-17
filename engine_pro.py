@@ -76,6 +76,29 @@ def is_monochrome_image(img):
         return False
     return float(np.mean(diff < 18)) > 0.99
 
+def is_logo_or_graphic(img):
+    """
+    Intelligent Detection: Identifies whether an image is a logo/badge/graphic/icon/typography
+    versus a complex photograph or rich painting.
+    """
+    thumb = img.resize((200, 200), Image.Resampling.BILINEAR)
+    arr = np.array(thumb.convert('RGB'))
+    
+    # 1. Measure flat color areas
+    gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    mean_patch = cv2.blur(gray, (5, 5))
+    sq_patch = cv2.blur(gray**2, (5, 5))
+    var_patch = np.maximum(0, sq_patch - mean_patch**2)
+    flat_pixels_pct = float(np.mean(var_patch < 16.0) * 100.0)
+    
+    # 2. Measure unique quantized colors (5-bit)
+    quant5 = (arr >> 3).reshape(-1, 3)
+    unique_5bit = len(np.unique(quant5, axis=0))
+    
+    # In logos: large flat regions (>40%) OR low color variance (<1400 unique 5-bit colors)
+    is_logo = (flat_pixels_pct > 40.0) or (unique_5bit < 1400)
+    return is_logo, flat_pixels_pct, unique_5bit
+
 def verify_vector_fidelity(orig_img, svg_content):
     """
     AI Quality Verification Pass:
@@ -228,21 +251,42 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     is_mono = is_monochrome_image(orig_img)
     is_line_art = (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color')) or preset in ('cut_vinyl', 'silhouette', 'line_art')
 
-    # Bounded Optimal Canvas Resolution (800 - 1200px)
-    # Guarantees sub-second execution (<1.2s) on Vercel Serverless (never times out!)
-    if max_dim > 1200:
-        scale = 1200.0 / max_dim
-        tw = int(round(orig_w * scale))
-        th = int(round(orig_h * scale))
-        work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
-    elif max_dim < 600:
-        scale = min(2.0, 900.0 / max_dim)
-        tw = int(round(orig_w * scale))
-        th = int(round(orig_h * scale))
-        work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+    is_logo_detected, flat_pct, u_colors = is_logo_or_graphic(orig_img)
+    is_logo = (preset in ('logo', 'clipart', 'badge', 'cut_vinyl', 'icon', 'graphic')) or (preset == 'auto' and is_logo_detected)
+
+    # Resolution Scaling:
+    if is_logo:
+        # LOGO PIPELINE:
+        # For low-res logos (e.g. 230px), upscale up to 4x (target 1000-1200px) with Lanczos.
+        # This converts discrete 1px staircases into smooth continuous sub-pixel gradients!
+        if max_dim < 1000:
+            scale = min(4.0, 1200.0 / max_dim)
+            tw = int(round(orig_w * scale))
+            th = int(round(orig_h * scale))
+            work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+        elif max_dim > 1400:
+            scale = 1400.0 / max_dim
+            tw = int(round(orig_w * scale))
+            th = int(round(orig_h * scale))
+            work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+        else:
+            tw, th = orig_w, orig_h
+            work_img = orig_img
     else:
-        tw, th = orig_w, orig_h
-        work_img = orig_img
+        # PHOTO / DETAILED ART PIPELINE (preserves rich gradients, feathers, landscapes):
+        if max_dim > 1200:
+            scale = 1200.0 / max_dim
+            tw = int(round(orig_w * scale))
+            th = int(round(orig_h * scale))
+            work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+        elif max_dim < 600:
+            scale = min(2.0, 900.0 / max_dim)
+            tw = int(round(orig_w * scale))
+            th = int(round(orig_h * scale))
+            work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+        else:
+            tw, th = orig_w, orig_h
+            work_img = orig_img
 
     temp_pre = input_path + "_master_pre.png"
 
@@ -314,25 +358,31 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     arr = np.array(rgb_img)
     bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
-    # Fast Edge-Preserving Bilateral Denoising:
-    # 0.02s execution time. Eliminates JPEG ringing, dither & pixel noise without
-    # creating fuzzy pink halos, boundary smearing, or posterized blobs!
-    is_photo = (preset == 'photo')
-    if is_photo:
+    # Fast Edge-Preserving Bilateral Denoising & Spline Fitting
+    if is_logo:
+        # Logos, Badges, Typography, Clipart (Silky 1000000x Continuous Bézier Splines)
+        # Fast bilateral filtering preserves pin-sharp corners without color bleed
+        smooth_bgr = cv2.bilateralFilter(bgr, 5, 25, 25)
+        # Golden Logo Parameters:
+        filter_speckle = 14 if preset == 'auto' else int(options.get('filter_speckle', 14))
+        color_precision = 4 if preset == 'auto' else int(options.get('color_precision', 4))
+        layer_difference = 56 if preset == 'auto' else int(options.get('layer_difference', 56))
+        corner_threshold = 54 if preset == 'auto' else int(options.get('corner_threshold', 54))
+        length_threshold = 10.0 if preset == 'auto' else float(options.get('length_threshold', 10.0))
+        max_iterations = 36 if preset == 'auto' else int(options.get('max_iterations', 36))
+        splice_threshold = 48 if preset == 'auto' else int(options.get('splice_threshold', 48))
+        path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
+    else:
+        # Photographic / Rich Artwork (Owl, clownfish, landscapes, portraits):
         smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 32)
         filter_speckle = int(options.get('filter_speckle', 8))
         color_precision = int(options.get('color_precision', 7))
         layer_difference = int(options.get('layer_difference', 16))
         corner_threshold = int(options.get('corner_threshold', 68))
         length_threshold = float(options.get('length_threshold', 6.2))
-    else:
-        # Logos, Badges, Graphics, Clipart (Silky 1000000x Smoothness)
-        smooth_bgr = cv2.bilateralFilter(bgr, 5, 28, 28)
-        filter_speckle = int(options.get('filter_speckle', 8))
-        color_precision = int(options.get('color_precision', 7))
-        layer_difference = int(options.get('layer_difference', 16))
-        corner_threshold = int(options.get('corner_threshold', 68))
-        length_threshold = float(options.get('length_threshold', 6.2))
+        max_iterations = int(options.get('max_iterations', 28))
+        splice_threshold = int(options.get('splice_threshold', 52))
+        path_precision = int(options.get('path_precision', 2))
 
     max_iterations = int(options.get('max_iterations', 28))
     splice_threshold = int(options.get('splice_threshold', 52))
