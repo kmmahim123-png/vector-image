@@ -1,13 +1,16 @@
 {
-  "name": "project-1",
+  "name": "free-vector-image",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Free PNG to SVG Converter & AI Vectorizer Online",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
+  "keywords": [
+    "png to svg",
+    "vectorize image",
+    "free vector converter"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
