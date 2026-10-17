@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
   "builds": [
     {
       "src": "api/index.py",
@@ -11,6 +17,18 @@
     }
   ],
   "routes": [
+    {
+      "src": "/ads.txt",
+      "dest": "/public/ads.txt"
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/public/robots.txt"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "/public/sitemap.xml"
+    },
     {
       "src": "/api/(.*)",
       "dest": "/api/index.py"

@@ -22,6 +22,12 @@ if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
+// Serve Google AdSense ads.txt with correct MIME type
+app.get('/ads.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.sendFile(path.resolve(__dirname, 'public', 'ads.txt'));
+});
+
 // Serve static assets (includes robots.txt and sitemap.xml)
 app.use(express.static(path.join(__dirname, 'public')));
 
