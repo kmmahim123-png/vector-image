@@ -132,7 +132,7 @@
         img.onload = () => {
           this.currentImage = img;
 
-          const maxUploadDimension = 1400;
+          const maxUploadDimension = 1800;
           let w = img.naturalWidth || img.width;
           let h = img.naturalHeight || img.height;
           const origW = w;
