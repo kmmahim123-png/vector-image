@@ -19,7 +19,7 @@
   "routes": [
     {
       "src": "/ads.txt",
-      "dest": "/public/ads.txt"
+      "dest": "/api/index.py"
     },
     {
       "src": "/robots.txt",

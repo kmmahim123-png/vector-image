@@ -44,6 +44,14 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(status_data).encode('utf-8'))
             return
 
+        if clean_path.endswith('/ads.txt') or clean_path == '/ads.txt' or clean_path == '/api/ads.txt':
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b"google.com, pub-4491918633486621, DIRECT, f08c47fec0942fa0\n")
+            return
+
         self.send_response(404)
         self._send_cors_headers()
         self.end_headers()
