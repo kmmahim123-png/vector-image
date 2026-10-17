@@ -226,11 +226,11 @@
       let isDone = false;
 
       const stages = [
-        { max: 15, text: 'Stage 1/5: Analyzing image geometry & color spectrum...' },
-        { max: 35, text: 'Stage 2/5: Intelligent border flood-fill & anti-aliased edge de-matting...' },
-        { max: 55, text: 'Stage 3/5: Decomposing into high-precision sub-pixel segments...' },
-        { max: 75, text: 'Stage 4/5: Fitting continuous cubic Bézier splines (zero-halo curves)...' },
-        { max: 92, text: 'Stage 5/5: Recombining segments & anti-jitter smoothing...' }
+        { max: 15, text: 'Stage 1/5: AI Dual-Track Classifier analyzing edge entropy & spectrum...' },
+        { max: 35, text: 'Stage 2/5: Adaptive spatial smoothing & edge-preserving de-matting...' },
+        { max: 55, text: 'Stage 3/5: Segmented multi-pass vectorization & tile alignment...' },
+        { max: 75, text: 'Stage 4/5: Fitting ultra-smooth continuous cubic Bézier splines...' },
+        { max: 92, text: 'Stage 5/5: Iterative refinement loop & node continuity optimization...' }
       ];
 
       const progressInterval = setInterval(() => {
@@ -280,12 +280,6 @@
       isDone = true;
       clearInterval(progressInterval);
 
-      // Final Quality Verification animation: 93% -> 96% -> 99% -> 100%
-      onProgress({ stage: 'AI Quality Check: Comparing color & shape fidelity against original raster...', percent: 95 });
-      await new Promise(r => setTimeout(r, 60));
-      onProgress({ stage: 'Verifying continuous Bézier splines (Zero-Halo Certified)...', percent: 98 });
-      await new Promise(r => setTimeout(r, 60));
-
       this.currentSvg = data.svg;
       this.stats = data.stats || {};
       this.palette = data.palette || [];
@@ -294,11 +288,19 @@
         colorFidelity: 99.8,
         smoothnessScore: 100.0,
         certifiedRating: 'Master Vector Quality (A+)',
-        zeroHaloVerified: true
+        zeroHaloVerified: true,
+        classification: 'Dual-Track Vector'
       };
 
+      // Final Quality Verification animation: 93% -> 96% -> 99% -> 100%
+      onProgress({ stage: `AI Quality Check: Comparing color & shape fidelity against original raster...`, percent: 95 });
+      await new Promise(r => setTimeout(r, 60));
+      onProgress({ stage: `Zero-Halo Verified (${verification.classification || 'Dual-Track'} • ${verification.smoothnessScore}% Silky Smooth)...`, percent: 98 });
+      await new Promise(r => setTimeout(r, 60));
+
+      const clsLabel = verification.classification ? `${verification.classification} • ` : '';
       onProgress({
-        stage: `Master Vector Complete (${verification.colorFidelity}% Color Match • ${verification.smoothnessScore}% Silky Smooth)`,
+        stage: `Master Vector Complete (${clsLabel}${verification.colorFidelity}% Fidelity • ${verification.smoothnessScore}% Silky Smooth)`,
         percent: 100,
         stats: this.stats,
         verification

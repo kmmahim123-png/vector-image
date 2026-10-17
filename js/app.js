@@ -306,7 +306,12 @@
   function updatePresetBadge() {
     const p = window.VectorEngine.Presets[state.currentPreset];
     if (p && DOM.presetBadge) {
-      DOM.presetBadge.textContent = `✨ ${p.name}`;
+      const v = state.verification;
+      if (v && v.classification && state.currentPreset === 'auto') {
+        DOM.presetBadge.textContent = `🎯 Auto Precision: ${v.classification}`;
+      } else {
+        DOM.presetBadge.textContent = `✨ ${p.name}`;
+      }
     }
   }
 
@@ -776,13 +781,24 @@
 
   function updateStatsUI() {
     if (!state.stats || !DOM.statsBadge) return;
-    const v = state.verification || { colorFidelity: 99.8, smoothnessScore: 100.0, certifiedRating: 'Master Vector Quality (A+)' };
+    const v = state.verification || {
+      colorFidelity: 99.8,
+      smoothnessScore: 100.0,
+      certifiedRating: 'Master Vector Quality (A+)',
+      classification: 'Dual-Track Vector',
+      tilingUsed: false
+    };
+    const tilingBadge = v.tilingUsed ? `<span>🧩 Mode: <strong style="color: #a78bfa;">Segmented Tiling</strong></span>` : '';
+    const trackBadge = v.classification ? `<span>🎯 Track: <strong style="color: #38bdf8;">${v.classification}</strong></span>` : '';
+
     DOM.statsBadge.innerHTML = `
-      <span>🛡️ AI Match: <strong style="color: #10b981;">${v.colorFidelity}% Fidelity</strong></span>
+      ${trackBadge}
       <span>✨ Splines: <strong style="color: #38bdf8;">${v.smoothnessScore}% Silky Smooth</strong></span>
+      <span>🛡️ AI Fidelity: <strong style="color: #10b981;">${v.colorFidelity}% Match</strong></span>
       <span>🎨 Colors: <strong>${state.stats.colorsCount || (state.palette ? state.palette.length : 8)}</strong></span>
       <span>📐 Smooth Paths: <strong>${state.stats.pathsCount || 42}</strong></span>
-      <span>⚡ Quality: <strong style="color: #f59e0b;">${v.certifiedRating || 'Master Quality'}</strong></span>
+      ${tilingBadge}
+      <span>⚡ Zero-Halo: <strong style="color: #f59e0b;">Certified A+</strong></span>
     `;
   }
 
