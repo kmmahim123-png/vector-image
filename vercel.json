@@ -1,4 +1,6 @@
 {
+  "buildCommand": "",
+  "outputDirectory": ".",
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
@@ -6,10 +8,6 @@
     }
   },
   "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    },
     {
       "source": "/api/(.*)",
       "destination": "/api/index.py"

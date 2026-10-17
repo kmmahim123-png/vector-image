@@ -1,0 +1,8 @@
+package.json
+package-lock.json
+node_modules/
+server.js
+temp/
+benchmark_logos/
+.git/
+.gitignore
