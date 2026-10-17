@@ -255,7 +255,7 @@
           colors_limit: state.colorsLimit,
           denoise_level: state.denoiseLevel,
           clean_checkerboard: state.cleanCheckerboard,
-          transparent_bg: state.transparentBg,
+          transparent_bg: false,
           ...state.options
         },
         (progress) => {
@@ -614,27 +614,15 @@
       DOM.canvasContainer.classList.remove('panning');
     });
 
-    // 1-Click Transparent Canvas Toggle Button
+    // 1-Click Transparent vs Studio White Canvas Toggle Button
     const btnToggleBg = document.getElementById('btn-toggle-bg-canvas');
     if (btnToggleBg) {
       btnToggleBg.addEventListener('click', () => {
         state.transparentBg = !state.transparentBg;
         btnToggleBg.classList.toggle('active', state.transparentBg);
         btnToggleBg.innerHTML = state.transparentBg ? '☀️ Studio White BG' : '🏁 Transparent Canvas';
-
-        if (state.svgString) {
-          if (state.transparentBg) {
-            // Strip solid studio background cleanly
-            state.svgString = state.svgString.replace(/<rect\b[^>]*id="studio-bg-rect"[^>]*\/>/i, '');
-            state.svgString = state.svgString.replace(/<rect\b[^>]*fill="#ffffff"[^>]*\/>/i, '');
-            state.svgString = state.svgString.replace(/<rect\b[^>]*fill="white"[^>]*\/>/i, '');
-          } else {
-            // Re-insert clean white studio background rect as first child
-            if (!state.svgString.includes('id="studio-bg-rect"') && !state.svgString.includes('fill="#ffffff"')) {
-              state.svgString = state.svgString.replace(/(<svg\b[^>]*>)/i, '$1\n<rect id="studio-bg-rect" width="100%" height="100%" fill="#ffffff"/>');
-            }
-          }
-          renderVectorPreview();
+        if (DOM.canvasContainer) {
+          DOM.canvasContainer.classList.toggle('studio-white', !state.transparentBg);
         }
       });
     }

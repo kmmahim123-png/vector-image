@@ -734,6 +734,11 @@ kbd {
   justify-content: center;
 }
 
+.canvas-viewport.studio-white {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
 .canvas-viewport.panning {
   cursor: grabbing;
 }

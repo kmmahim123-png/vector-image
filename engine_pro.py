@@ -360,17 +360,20 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
     # Fast Edge-Preserving Bilateral Denoising & Spline Fitting
     if is_logo:
-        # Logos, Badges, Typography, Clipart (Silky 1000000x Continuous Bézier Splines)
-        # Fast bilateral filtering preserves pin-sharp corners without color bleed
-        smooth_bgr = cv2.bilateralFilter(bgr, 5, 25, 25)
+        # Logos, Badges, Typography, Clipart (Silky 10,000,000x Continuous Bézier Splines)
+        # Dual-stage mean-shift + bilateral edge refinement:
+        # Eliminates anti-aliasing color bands (pink/light-blue halo paths)
+        # while fitting silky-smooth continuous splines
+        shift_bgr = cv2.pyrMeanShiftFiltering(bgr, sp=8, sr=20)
+        smooth_bgr = cv2.bilateralFilter(shift_bgr, 5, 20, 20)
         # Golden Logo Parameters:
         filter_speckle = 14 if preset == 'auto' else int(options.get('filter_speckle', 14))
         color_precision = 4 if preset == 'auto' else int(options.get('color_precision', 4))
         layer_difference = 56 if preset == 'auto' else int(options.get('layer_difference', 56))
-        corner_threshold = 54 if preset == 'auto' else int(options.get('corner_threshold', 54))
-        length_threshold = 10.0 if preset == 'auto' else float(options.get('length_threshold', 10.0))
-        max_iterations = 36 if preset == 'auto' else int(options.get('max_iterations', 36))
-        splice_threshold = 48 if preset == 'auto' else int(options.get('splice_threshold', 48))
+        corner_threshold = 48 if preset == 'auto' else int(options.get('corner_threshold', 48))
+        length_threshold = 12.0 if preset == 'auto' else float(options.get('length_threshold', 12.0))
+        max_iterations = 48 if preset == 'auto' else int(options.get('max_iterations', 48))
+        splice_threshold = 56 if preset == 'auto' else int(options.get('splice_threshold', 56))
         path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
     else:
         # Photographic / Rich Artwork (Owl, clownfish, landscapes, portraits):
@@ -383,10 +386,6 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         max_iterations = int(options.get('max_iterations', 28))
         splice_threshold = int(options.get('splice_threshold', 52))
         path_precision = int(options.get('path_precision', 2))
-
-    max_iterations = int(options.get('max_iterations', 28))
-    splice_threshold = int(options.get('splice_threshold', 52))
-    path_precision = int(options.get('path_precision', 2))
 
     clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
     Image.fromarray(clean_rgb).save(temp_pre)
@@ -407,15 +406,12 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     with open(output_svg_path, 'r', encoding='utf-8', errors='ignore') as f:
         svg_content = f.read()
 
-    # Clean transparent background removal if requested or if original image had native alpha:
-    first_path = re.search(r'<path[^>]*>', svg_content)
-    if first_path:
-        fill_m = re.search(r'fill="([^"]+)"', first_path.group(0))
-        if fill_m:
-            color = fill_m.group(1).upper()
-            if has_native_alpha and color in ('#FFFFFF', '#FEFEFE', '#FDFDFD', '#FCFCFC', '#FBFBFB', '#FAFAFA'):
-                svg_content = svg_content[:first_path.start()] + svg_content[first_path.end():]
-            elif transparent_bg:
+    # ONLY strip artificial white background if original image had genuine native alpha:
+    if has_native_alpha:
+        first_path = re.search(r'<path[^>]*>', svg_content)
+        if first_path:
+            fill_m = re.search(r'fill="([^"]+)"', first_path.group(0))
+            if fill_m and fill_m.group(1).upper() in ('#FFFFFF', '#FEFEFE', '#FDFDFD', '#FCFCFC', '#FBFBFB', '#FAFAFA'):
                 svg_content = svg_content[:first_path.start()] + svg_content[first_path.end():]
 
     svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'

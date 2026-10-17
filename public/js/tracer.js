@@ -44,11 +44,11 @@
         denoise_level: 'high',
         super_sampling: 1,
         filter_speckle: 14,
-        corner_threshold: 54,
-        length_threshold: 10.0,
+        corner_threshold: 48,
+        length_threshold: 12.0,
         layer_difference: 56,
-        splice_threshold: 48,
-        max_iterations: 36,
+        splice_threshold: 56,
+        max_iterations: 48,
         clean_checkerboard: true
       },
       clipart: {
