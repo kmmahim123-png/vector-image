@@ -277,9 +277,27 @@
 
       showScreen('result');
     } catch (err) {
-      console.error('Vectorization error:', err);
-      alert('Vectorization failed: ' + err.message);
-      showScreen('hero');
+      console.warn('Vectorization server attempt failed, running automatic resilient client fallback:', err);
+      try {
+        const fallback = await engine.vectorizeClientFallback({
+          presetKey: state.currentPreset,
+          colors_limit: state.colorsLimit
+        });
+        state.svgString = fallback.svg;
+        state.stats = fallback.stats;
+        state.palette = fallback.palette || [];
+
+        updatePresetBadge();
+        renderVectorPreview();
+        updateStatsUI();
+        renderPaletteBar(state.palette);
+        resetZoomAndPan();
+        showScreen('result');
+      } catch (finalErr) {
+        console.error('All vectorization engines exhausted:', finalErr);
+        alert('Could not process image: ' + finalErr.message);
+        showScreen('hero');
+      }
     }
   }
 
