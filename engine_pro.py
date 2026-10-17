@@ -79,9 +79,12 @@ def is_monochrome_image(img):
 
 def analyze_image_dual_track(img):
     """
-    Intelligent Dual-Track Image Analysis:
+    Intelligent Tri-Band Image Analysis:
     Measures edge gradient magnitude, flat area variance, and color spectrum entropy.
-    Computes continuous photo score (0.0 = pure logo, 1.0 = complex photographic raster).
+    Computes continuous photo score and distinguishes:
+    1. Solid Brand Logo (e.g. Pepsi, Coca-Cola, typography)
+    2. Gradient Mascot & Graphic (e.g. colorful bird, mascot logos, emblems)
+    3. Photographic Raster (e.g. owl, clownfish, landscapes)
     """
     thumb = img.resize((200, 200), Image.Resampling.BILINEAR)
     arr = np.array(thumb.convert('RGB'))
@@ -109,7 +112,12 @@ def analyze_image_dual_track(img):
     is_logo = (photo_score < 0.50)
 
     confidence = round(float(abs(photo_score - 0.50) * 2.0 * 100.0), 1)
-    classification = "Logo & Graphic" if is_logo else "Photographic Raster"
+    if not is_logo:
+        classification = "Photographic Raster"
+    elif u_colors > 1000 or (flat_ratio > 0.65 and u_colors > 650):
+        classification = "Gradient Mascot & Graphic"
+    else:
+        classification = "Solid Brand Logo"
 
     return {
         "is_logo": is_logo,
@@ -250,7 +258,7 @@ def _safe_vtracer_fallback(input_path, output_svg_path, options):
         return {
             "success": True,
             "width": w, "height": h,
-            "origWidth": w, "origHeight": h,
+            "origWidth": w, "origHeight": orig_h,
             "pathsCount": 2, "colorsCount": 2,
             "palette": [{'hex': '#3B82F6', 'count': 1, 'percentage': 80.0}, {'hex': '#FFFFFF', 'count': 1, 'percentage': 20.0}],
             "svgSizeKb": 0.5,
@@ -265,16 +273,18 @@ def _safe_vtracer_fallback(input_path, output_svg_path, options):
             }
         }
 
-def _vectorize_tile(tile_crop, offset_x, offset_y, tile_w, tile_h, is_logo, params):
+def _vectorize_tile(tile_crop, offset_x, offset_y, tile_w, tile_h, is_logo, is_gradient_graphic, params):
     """Vectorizes an individual sub-region tile and formats with translation transform"""
     tile_rgb = tile_crop.convert('RGB')
     tile_bgr = cv2.cvtColor(np.array(tile_rgb), cv2.COLOR_RGB2BGR)
 
-    if is_logo:
+    if not is_logo:
+        smooth = cv2.bilateralFilter(tile_bgr, 7, 32, 32)
+    elif is_gradient_graphic:
+        smooth = cv2.edgePreservingFilter(tile_bgr, flags=1, sigma_s=40, sigma_r=0.25)
+    else:
         filtered = cv2.pyrMeanShiftFiltering(tile_bgr, sp=8, sr=20)
         smooth = cv2.bilateralFilter(filtered, 5, 20, 20)
-    else:
-        smooth = cv2.bilateralFilter(tile_bgr, 7, 32, 32)
 
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as in_t, \
          tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as out_t:
@@ -319,17 +329,42 @@ def _vectorize_segmented_tiling(orig_img, output_svg_path, options, analysis):
     """
     orig_w, orig_h = orig_img.size
     is_logo = analysis["is_logo"]
+    classification = analysis.get("classification", "Dual-Track Vector")
+    is_gradient = (classification == "Gradient Mascot & Graphic" or analysis.get("unique_colors", 0) > 1000)
 
-    params = {
-        'filter_speckle': 14 if is_logo else 8,
-        'color_precision': 4 if is_logo else 7,
-        'layer_difference': 56 if is_logo else 16,
-        'corner_threshold': 48 if is_logo else 68,
-        'length_threshold': 12.0 if is_logo else 6.2,
-        'max_iterations': 48 if is_logo else 28,
-        'splice_threshold': 56 if is_logo else 52,
-        'path_precision': 3
-    }
+    if is_logo and is_gradient:
+        params = {
+            'filter_speckle': 18,
+            'color_precision': 7,
+            'layer_difference': 22,
+            'corner_threshold': 75,
+            'length_threshold': 13.0,
+            'max_iterations': 70,
+            'splice_threshold': 64,
+            'path_precision': 3
+        }
+    elif is_logo:
+        params = {
+            'filter_speckle': 14,
+            'color_precision': 5,
+            'layer_difference': 48,
+            'corner_threshold': 55,
+            'length_threshold': 12.0,
+            'max_iterations': 48,
+            'splice_threshold': 56,
+            'path_precision': 3
+        }
+    else:
+        params = {
+            'filter_speckle': 8,
+            'color_precision': 7,
+            'layer_difference': 16,
+            'corner_threshold': 68,
+            'length_threshold': 6.2,
+            'max_iterations': 28,
+            'splice_threshold': 52,
+            'path_precision': 2
+        }
 
     cols = 2
     rows = 2
@@ -353,7 +388,7 @@ def _vectorize_segmented_tiling(orig_img, output_svg_path, options, analysis):
             y1 = min(orig_h, (r + 1) * tile_h + (overlap if r < rows - 1 else 0))
 
             tile_crop = orig_img.crop((x0, y0, x1, y1))
-            g_str, p_list = _vectorize_tile(tile_crop, x0, y0, x1 - x0, y1 - y0, is_logo, params)
+            g_str, p_list = _vectorize_tile(tile_crop, x0, y0, x1 - x0, y1 - y0, is_logo, is_gradient, params)
             svg_groups.append(g_str)
             all_paths.extend(p_list)
 
@@ -413,8 +448,9 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         if np.min(raw_arr[:, :, 3]) < 240:
             has_native_alpha = True
 
-    # 1. Dual-Track Intelligent Classification
+    # 1. Tri-Band Intelligent Classification
     analysis = analyze_image_dual_track(orig_img)
+    u_colors = analysis["unique_colors"]
 
     preset = options.get('preset', 'auto')
     is_mono = is_monochrome_image(orig_img)
@@ -422,33 +458,34 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
     if preset in ('logo', 'clipart', 'badge', 'cut_vinyl', 'icon', 'graphic'):
         is_logo = True
-        analysis["classification"] = "Logo & Graphic"
+        if u_colors > 1000 or preset in ('clipart', 'graphic'):
+            classification = "Gradient Mascot & Graphic"
+        else:
+            classification = "Solid Brand Logo"
+        analysis["classification"] = classification
     elif preset in ('photo', 'detailed', 'illustration'):
         is_logo = False
         analysis["classification"] = "Photographic Raster"
     else:
         is_logo = analysis["is_logo"]
+        classification = analysis["classification"]
+
+    is_gradient_graphic = (is_logo and (classification == "Gradient Mascot & Graphic" or u_colors > 1000 or (analysis.get("flat_ratio", 0) > 65.0 and u_colors > 650)))
 
     # Resolution Scaling:
     if is_logo:
-        # LOGO PIPELINE:
-        # For low-res logos (e.g. 230px), upscale up to 4x (target 1000-1200px) with Lanczos.
-        # This converts discrete 1px staircases into smooth continuous sub-pixel gradients!
-        if max_dim < 1000:
-            scale = min(4.0, 1200.0 / max_dim)
-            tw = int(round(orig_w * scale))
-            th = int(round(orig_h * scale))
-            work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
-        elif max_dim > 1400:
-            scale = 1400.0 / max_dim
-            tw = int(round(orig_w * scale))
-            th = int(round(orig_h * scale))
-            work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+        if is_gradient_graphic:
+            # Gradient Mascot / Illustration Pipeline:
+            # 2.5x Lanczos upsampling converts discrete pixel steps into silky continuous sub-pixel splines
+            scale = min(2.5, 1200.0 / max_dim) if max_dim < 900 else (1200.0 / max_dim if max_dim > 1400 else 1.0)
         else:
-            tw, th = orig_w, orig_h
-            work_img = orig_img
+            # Solid Brand Logo Pipeline (Pepsi, Coca-Cola):
+            scale = min(4.0, 1200.0 / max_dim) if max_dim < 1000 else (1400.0 / max_dim if max_dim > 1400 else 1.0)
+        tw = int(round(orig_w * scale))
+        th = int(round(orig_h * scale))
+        work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
     else:
-        # PHOTO / DETAILED ART PIPELINE (preserves rich gradients, feathers, landscapes):
+        # Photo / detailed artwork:
         if max_dim > 1200:
             scale = 1200.0 / max_dim
             tw = int(round(orig_w * scale))
@@ -525,7 +562,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     if use_tiling:
         return _vectorize_segmented_tiling(orig_img, output_svg_path, options, analysis)
 
-    # CASE B: COLOR LOGOS, BADGES, ILLUSTRATIONS & PHOTOS
+    # CASE B: COLOR LOGOS, BADGES, MASCOTS, ILLUSTRATIONS & PHOTOS
     # Handle transparent PNGs by compositing onto white canvas for uniform spline fitting
     if has_native_alpha:
         rgba = work_img.convert('RGBA')
@@ -538,25 +575,34 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     arr = np.array(rgb_img)
     bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
-    # Adaptive Edge-Preserving Denoising:
-    if is_logo:
-        # Logos, Badges, Typography, Clipart (Silky 10,000,000x Continuous Bézier Splines)
-        # Dual-stage mean-shift + bilateral edge refinement:
-        # Eliminates anti-aliasing color bands (pink/light-blue halo paths)
-        # while fitting silky-smooth continuous splines
+    # Tri-Band Edge-Preserving Denoising & Precision Tuning:
+    if is_logo and is_gradient_graphic:
+        # 1. Gradient Mascots & Rich Graphics (Colorful Bird, Mascot Logos, Gaming Emblems)
+        # Recursive edge-preserving filter eliminates staircases without smearing thin lines or gradients!
+        smooth_bgr = cv2.edgePreservingFilter(bgr, flags=1, sigma_s=40, sigma_r=0.25)
+        filter_speckle = 18 if preset == 'auto' else int(options.get('filter_speckle', 18))
+        color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
+        layer_difference = 22 if preset == 'auto' else int(options.get('layer_difference', 22))
+        corner_threshold = 75 if preset == 'auto' else int(options.get('corner_threshold', 75))
+        length_threshold = 13.0 if preset == 'auto' else float(options.get('length_threshold', 13.0))
+        max_iterations = 70 if preset == 'auto' else int(options.get('max_iterations', 70))
+        splice_threshold = 64 if preset == 'auto' else int(options.get('splice_threshold', 64))
+        path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
+    elif is_logo:
+        # 2. Solid Brand Logos (Pepsi, Coca-Cola, Starbucks, Badges, Typography)
+        # Dual-stage mean-shift + bilateral edge refinement eliminates anti-aliasing color halos!
         shift_bgr = cv2.pyrMeanShiftFiltering(bgr, sp=8, sr=20)
         smooth_bgr = cv2.bilateralFilter(shift_bgr, 5, 20, 20)
-        # Golden Logo Parameters:
         filter_speckle = 14 if preset == 'auto' else int(options.get('filter_speckle', 14))
-        color_precision = 4 if preset == 'auto' else int(options.get('color_precision', 4))
-        layer_difference = 56 if preset == 'auto' else int(options.get('layer_difference', 56))
-        corner_threshold = 48 if preset == 'auto' else int(options.get('corner_threshold', 48))
+        color_precision = 5 if preset == 'auto' else int(options.get('color_precision', 5))
+        layer_difference = 48 if preset == 'auto' else int(options.get('layer_difference', 48))
+        corner_threshold = 55 if preset == 'auto' else int(options.get('corner_threshold', 55))
         length_threshold = 12.0 if preset == 'auto' else float(options.get('length_threshold', 12.0))
         max_iterations = 48 if preset == 'auto' else int(options.get('max_iterations', 48))
         splice_threshold = 56 if preset == 'auto' else int(options.get('splice_threshold', 56))
         path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
     else:
-        # Photographic / Rich Artwork (Owl, clownfish, landscapes, portraits):
+        # 3. Photographic Raster (Owl, clownfish, landscapes, portraits)
         smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 32)
         filter_speckle = int(options.get('filter_speckle', 8))
         color_precision = int(options.get('color_precision', 7))
@@ -585,12 +631,12 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
         refinement_passes = 1
         # Iterative Refinement Loop:
-        # If logo smoothness is below 92.5%, execute Pass 2 with adaptive curve relaxation
+        # If logo smoothness is below 93.0%, execute Pass 2 with adaptive curve relaxation
         if is_logo:
             c1 = len(re.findall(r'[Cc]', svg_content))
             l1 = len(re.findall(r'[Ll]', svg_content))
             s1 = (c1 / (c1 + l1 or 1)) * 100.0
-            if s1 < 92.5:
+            if s1 < 93.0:
                 with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as p2_tmp:
                     temp_p2 = p2_tmp.name
                 try:
@@ -598,8 +644,8 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
                         temp_pre, temp_p2,
                         'color', 'stacked', 'spline',
                         filter_speckle, color_precision, layer_difference,
-                        max(40, corner_threshold - 4), min(16.0, length_threshold + 2.5),
-                        max_iterations + 10, min(68, splice_threshold + 6), path_precision
+                        max(40, corner_threshold - 4), min(16.0, length_threshold + 2.0),
+                        max_iterations + 10, min(70, splice_threshold + 4), path_precision
                     )
                     with open(temp_p2, 'r', encoding='utf-8', errors='ignore') as f2:
                         svg_p2 = f2.read()
