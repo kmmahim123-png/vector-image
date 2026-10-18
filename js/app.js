@@ -105,6 +105,7 @@
     setupVectorMagicGallerySliders();
     setupWizardBar();
     setupClipboardPaste();
+    setupColorActionModal();
 
     window.addEventListener('resize', () => {
       if (state.screen === 'result') {
@@ -440,34 +441,19 @@
         const cardSwatch = document.createElement('div');
         cardSwatch.className = 'vm-card-swatch';
         cardSwatch.style.backgroundColor = item.hex;
-        cardSwatch.title = `${item.hex} (${item.percentage}%) • Click to Recolor`;
+        cardSwatch.title = `${item.hex} (${item.percentage}%) • Click to Merge / Recolor`;
 
         cardSwatch.addEventListener('mouseenter', () => {
-          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
           paths.forEach((p) => { p.style.filter = 'drop-shadow(0 0 6px #06b6d4)'; });
         });
         cardSwatch.addEventListener('mouseleave', () => {
-          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
           paths.forEach((p) => { p.style.filter = 'none'; });
         });
 
         cardSwatch.addEventListener('click', () => {
-          const colorInput = document.createElement('input');
-          colorInput.type = 'color';
-          colorInput.value = item.hex.length === 7 ? item.hex : '#ffffff';
-          colorInput.style.position = 'fixed';
-          colorInput.style.opacity = '0';
-          document.body.appendChild(colorInput);
-          colorInput.click();
-
-          colorInput.addEventListener('change', () => {
-            const newColor = colorInput.value.toUpperCase();
-            state.svgString = engine.recolorClient({ [item.hex]: newColor });
-            renderVectorPreview();
-            cardSwatch.style.backgroundColor = newColor;
-            cardSwatch.title = `${newColor} • Click to Recolor`;
-            colorInput.remove();
-          });
+          openColorActionModal(item.hex);
         });
 
         vmSwatchesRow.appendChild(cardSwatch);
@@ -476,17 +462,18 @@
       const pill = document.createElement('div');
       pill.className = 'swatch-pill';
       pill.dataset.hex = item.hex;
+      pill.title = `${item.hex} (${item.percentage}%) • Click to Merge / Recolor`;
 
       pill.innerHTML = `
         <div class="swatch-color-box" style="background-color: ${item.hex};"></div>
         <span class="swatch-hex">${item.hex}</span>
         <span class="swatch-pct">${item.percentage}%</span>
-        <button class="swatch-btn-remove" title="Make Transparent (Remove Background)">✕</button>
+        <button class="swatch-btn-remove" title="Make Transparent (Remove Color)">✕</button>
       `;
 
       // Hover to highlight matching paths
       pill.addEventListener('mouseenter', () => {
-        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
         paths.forEach((p) => {
           p.dataset.origOpacity = p.style.opacity || '1';
           p.style.filter = 'drop-shadow(0 0 6px #06b6d4)';
@@ -494,7 +481,7 @@
       });
 
       pill.addEventListener('mouseleave', () => {
-        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
         paths.forEach((p) => {
           p.style.filter = 'none';
         });
@@ -506,37 +493,180 @@
         e.stopPropagation();
         state.svgString = engine.recolorClient({ [item.hex]: 'transparent' });
         renderVectorPreview();
-        pill.remove();
-        if (state.stats) {
-          state.stats.pathsCount = Math.max(1, (state.stats.pathsCount || 10) - item.count);
-          state.stats.colorsCount = Math.max(1, (state.stats.colorsCount || 2) - 1);
-          updateStatsUI();
+        if (state.palette) {
+          state.palette = state.palette.filter((p) => p.hex.toLowerCase() !== item.hex.toLowerCase());
+          if (state.stats) {
+            state.stats.colorsCount = state.palette.length;
+            updateStatsUI();
+          }
+          renderPaletteBar(state.palette);
         }
       });
 
-      // Recolor: Click pill to open native color picker
+      // Recolor / Merge: Click pill to open Vector Magic Color Action Modal
       pill.addEventListener('click', () => {
-        const colorInput = document.createElement('input');
-        colorInput.type = 'color';
-        colorInput.value = item.hex.length === 7 ? item.hex : '#ffffff';
-        colorInput.style.position = 'fixed';
-        colorInput.style.opacity = '0';
-        document.body.appendChild(colorInput);
-        colorInput.click();
-
-        colorInput.addEventListener('change', () => {
-          const newColor = colorInput.value.toUpperCase();
-          state.svgString = engine.recolorClient({ [item.hex]: newColor });
-          renderVectorPreview();
-          pill.querySelector('.swatch-color-box').style.backgroundColor = newColor;
-          pill.querySelector('.swatch-hex').textContent = newColor;
-          item.hex = newColor;
-          document.body.removeChild(colorInput);
-        });
+        openColorActionModal(item.hex);
       });
 
       DOM.studioSwatchesRow.appendChild(pill);
     });
+  }
+
+  /**
+   * Vector Magic Interactive Color Action / Merging Modal
+   */
+  let activeModalHex = null;
+
+  function setupColorActionModal() {
+    const modalOverlay = document.getElementById('color-action-modal-overlay');
+    const modalClose = document.getElementById('modal-color-close');
+    const pickerInput = document.getElementById('modal-color-picker-input');
+    const hexInput = document.getElementById('modal-color-hex-input');
+    const btnApplyRecolor = document.getElementById('modal-btn-apply-recolor');
+    const mergeSelect = document.getElementById('modal-merge-select');
+    const btnMerge = document.getElementById('modal-btn-merge');
+    const btnRemoveColor = document.getElementById('modal-btn-remove-color');
+    const previewPill = document.getElementById('modal-color-preview');
+
+    if (!modalOverlay) return;
+
+    function closeModal() {
+      modalOverlay.style.display = 'none';
+      activeModalHex = null;
+    }
+
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+
+    if (pickerInput && hexInput) {
+      pickerInput.addEventListener('input', () => {
+        const col = pickerInput.value.toUpperCase();
+        hexInput.value = col;
+        if (previewPill) previewPill.style.backgroundColor = col;
+      });
+
+      hexInput.addEventListener('input', () => {
+        let val = hexInput.value.trim().toUpperCase();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+          pickerInput.value = val;
+          if (previewPill) previewPill.style.backgroundColor = val;
+        }
+      });
+    }
+
+    if (btnApplyRecolor) {
+      btnApplyRecolor.addEventListener('click', () => {
+        if (!activeModalHex || !state.svgString) return;
+        let newHex = hexInput.value.trim().toUpperCase();
+        if (!newHex.startsWith('#')) newHex = '#' + newHex;
+        if (!/^#[0-9A-F]{6}$/i.test(newHex)) return;
+
+        state.svgString = engine.recolorClient({ [activeModalHex]: newHex });
+        renderVectorPreview();
+
+        if (state.palette) {
+          const item = state.palette.find(p => p.hex.toLowerCase() === activeModalHex.toLowerCase());
+          if (item) item.hex = newHex;
+          renderPaletteBar(state.palette);
+        }
+        closeModal();
+      });
+    }
+
+    if (btnMerge) {
+      btnMerge.addEventListener('click', () => {
+        if (!activeModalHex || !state.svgString || !mergeSelect) return;
+        const targetHex = mergeSelect.value;
+        if (!targetHex || targetHex.toLowerCase() === activeModalHex.toLowerCase()) return;
+
+        state.svgString = engine.recolorClient({ [activeModalHex]: targetHex });
+        renderVectorPreview();
+
+        if (state.palette) {
+          const srcItem = state.palette.find(p => p.hex.toLowerCase() === activeModalHex.toLowerCase());
+          const tgtItem = state.palette.find(p => p.hex.toLowerCase() === targetHex.toLowerCase());
+          if (srcItem && tgtItem) {
+            tgtItem.percentage = (parseFloat(tgtItem.percentage || 0) + parseFloat(srcItem.percentage || 0)).toFixed(1);
+            state.palette = state.palette.filter(p => p.hex.toLowerCase() !== activeModalHex.toLowerCase());
+          }
+          if (state.stats) {
+            state.stats.colorsCount = state.palette.length;
+            updateStatsUI();
+          }
+          renderPaletteBar(state.palette);
+        }
+        closeModal();
+      });
+    }
+
+    if (btnRemoveColor) {
+      btnRemoveColor.addEventListener('click', () => {
+        if (!activeModalHex || !state.svgString) return;
+        state.svgString = engine.recolorClient({ [activeModalHex]: 'transparent' });
+        renderVectorPreview();
+
+        if (state.palette) {
+          state.palette = state.palette.filter(p => p.hex.toLowerCase() !== activeModalHex.toLowerCase());
+          if (state.stats) {
+            state.stats.colorsCount = state.palette.length;
+            updateStatsUI();
+          }
+          renderPaletteBar(state.palette);
+        }
+        closeModal();
+      });
+    }
+  }
+
+  function openColorActionModal(hex) {
+    const modalOverlay = document.getElementById('color-action-modal-overlay');
+    const previewPill = document.getElementById('modal-color-preview');
+    const titleEl = document.getElementById('modal-color-title');
+    const pickerInput = document.getElementById('modal-color-picker-input');
+    const hexInput = document.getElementById('modal-color-hex-input');
+    const mergeSelect = document.getElementById('modal-merge-select');
+    const btnMerge = document.getElementById('modal-btn-merge');
+
+    if (!modalOverlay) return;
+    activeModalHex = hex.toUpperCase();
+
+    if (previewPill) previewPill.style.backgroundColor = activeModalHex;
+    if (titleEl) titleEl.textContent = `Color: ${activeModalHex}`;
+    if (pickerInput) pickerInput.value = activeModalHex.length === 7 ? activeModalHex : '#000000';
+    if (hexInput) hexInput.value = activeModalHex;
+
+    if (mergeSelect) {
+      mergeSelect.innerHTML = '';
+      const otherColors = (state.palette || []).filter(p => p.hex.toUpperCase() !== activeModalHex);
+      if (otherColors.length > 0) {
+        otherColors.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.hex.toUpperCase();
+          opt.textContent = `${c.hex.toUpperCase()} (${c.percentage}%)`;
+          mergeSelect.appendChild(opt);
+        });
+        if (btnMerge) {
+          btnMerge.disabled = false;
+          btnMerge.style.opacity = '1';
+          btnMerge.style.cursor = 'pointer';
+        }
+      } else {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No other colors available';
+        mergeSelect.appendChild(opt);
+        if (btnMerge) {
+          btnMerge.disabled = true;
+          btnMerge.style.opacity = '0.5';
+          btnMerge.style.cursor = 'not-allowed';
+        }
+      }
+    }
+
+    modalOverlay.style.display = 'flex';
   }
 
   function updateViewModeDisplay() {
@@ -689,12 +819,30 @@
         renderVectorPreview();
       });
     });
+
+    // Deep Zoom Presets (Fit, 100%, 200%, 400%, 800%)
+    document.querySelectorAll('.zoom-preset-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.zoom;
+        if (val === 'fit') {
+          resetZoomAndPan();
+        } else {
+          const targetZoom = parseFloat(val);
+          state.zoom = targetZoom;
+          state.pan = { x: 0, y: 0 };
+          DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
+          applyTransform();
+        }
+        updateZoomPresetButtons();
+      });
+    });
   }
 
   function changeZoom(factor) {
     state.zoom = Math.max(0.15, Math.min(32, state.zoom * factor));
     DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
     applyTransform();
+    updateZoomPresetButtons();
   }
 
   function resetZoomAndPan() {
@@ -704,6 +852,19 @@
     DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
     applyTransform();
     setSplitPosition(50);
+    updateZoomPresetButtons();
+  }
+
+  function updateZoomPresetButtons() {
+    const fit = calculateFitZoom();
+    document.querySelectorAll('.zoom-preset-btn').forEach((btn) => {
+      const val = btn.dataset.zoom;
+      if (val === 'fit') {
+        btn.classList.toggle('active', Math.abs(state.zoom - fit) < 0.05);
+      } else {
+        btn.classList.toggle('active', Math.abs(state.zoom - parseFloat(val)) < 0.05);
+      }
+    });
   }
 
   function applyTransform() {
@@ -714,7 +875,7 @@
   }
 
   /**
-   * Executive Download Handlers: Standard Vector SVG, 4K Vector SVG, 8K Vector SVG, High-Res PNG Suite (1x, 4K, 8K), EPS, PDF
+   * Executive Download Handlers: Standard Vector SVG, 4K Vector SVG, 8K Vector SVG, Copy SVG to Clipboard, High-Res PNG Suite (1x, 4K, 8K), EPS, PDF
    */
   function setupDownloadButtons() {
     const getBaseName = () => state.fileName.replace(/\.[^/.]+$/, '');
@@ -741,6 +902,42 @@
       DOM.dlVector8k.addEventListener('click', () => {
         if (!state.svgString) return;
         window.VectorExporters.downloadVectorSVG(state.svgString, `${getBaseName()}-8k.svg`, 7680);
+      });
+    }
+
+    // OPTION 4: 1-Click Copy SVG Code to Clipboard
+    const btnCopySvg = document.getElementById('btn-copy-svg-code');
+    const btnCopySvgText = document.getElementById('btn-copy-svg-text');
+    const btnCopySvgPill = document.getElementById('btn-copy-svg-pill');
+    if (btnCopySvg) {
+      btnCopySvg.addEventListener('click', async () => {
+        if (!state.svgString) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(state.svgString);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = state.svgString;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+
+          btnCopySvg.classList.add('copied');
+          if (btnCopySvgText) btnCopySvgText.textContent = '✓ Copied to Clipboard!';
+          if (btnCopySvgPill) btnCopySvgPill.textContent = 'COPIED!';
+
+          setTimeout(() => {
+            btnCopySvg.classList.remove('copied');
+            if (btnCopySvgText) btnCopySvgText.textContent = 'Copy SVG Code';
+            if (btnCopySvgPill) btnCopySvgPill.textContent = 'CLIPBOARD';
+          }, 2500);
+        } catch (err) {
+          console.error('Failed to copy SVG markup to clipboard:', err);
+        }
       });
     }
 

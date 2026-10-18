@@ -370,6 +370,13 @@
               <span class="zoom-level-text" id="zoom-level-text">100%</span>
               <button class="zoom-btn" id="zoom-in-btn" title="Zoom in">+</button>
               <button class="zoom-btn" id="zoom-reset-btn" title="Reset View" style="width: auto; padding: 0 0.6rem; font-size: 0.75rem;">Reset</button>
+              <div class="zoom-presets-group">
+                <button type="button" class="zoom-preset-btn" data-zoom="fit" title="Fit to Canvas">Fit</button>
+                <button type="button" class="zoom-preset-btn" data-zoom="1" title="100% Native Scale">100%</button>
+                <button type="button" class="zoom-preset-btn" data-zoom="2" title="200% Zoom">200%</button>
+                <button type="button" class="zoom-preset-btn" data-zoom="4" title="400% Deep Inspection">400%</button>
+                <button type="button" class="zoom-preset-btn" data-zoom="8" title="800% Micro Spline Inspection">800%</button>
+              </div>
             </div>
           </div>
 
@@ -515,6 +522,16 @@
                 <span class="btn-vector-sub">Cinema Master SVG • 7680px Print Canvas</span>
               </div>
               <span class="btn-vector-pill pill-8k">8K SVG</span>
+            </button>
+
+            <!-- Option 4: 1-Click Copy SVG to Clipboard -->
+            <button class="btn-copy-svg" id="btn-copy-svg-code" title="Copy raw SVG markup directly to clipboard">
+              <div class="btn-vector-icon">📋</div>
+              <div class="btn-vector-text">
+                <span class="btn-vector-title" id="btn-copy-svg-text">Copy SVG Code</span>
+                <span class="btn-vector-sub">Paste directly into Figma, Illustrator, or HTML</span>
+              </div>
+              <span class="btn-vector-pill" id="btn-copy-svg-pill">CLIPBOARD</span>
             </button>
           </div>
 
@@ -1210,6 +1227,40 @@
         <p style="font-size: 0.9rem;">
           <strong>Recommendation:</strong> Use <strong>Fill only (or DXF)</strong> for fabrication, cutting, or vinyl signs. Use <strong>Stroke + Fill</strong> for websites, UI assets, and presentation graphics.
         </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vector Magic Color Action / Merge Modal -->
+  <div class="color-action-modal-overlay" id="color-action-modal-overlay" style="display: none;">
+    <div class="color-action-modal" id="color-action-modal">
+      <div class="color-action-header">
+        <div class="color-action-title">
+          <span class="color-preview-pill" id="modal-color-preview"></span>
+          <span id="modal-color-title">Color: #FFFFFF</span>
+        </div>
+        <button type="button" class="color-action-btn-close" id="modal-color-close" title="Close">&times;</button>
+      </div>
+
+      <div class="color-action-group">
+        <label>Recolor Swatch</label>
+        <div class="color-action-btns-row">
+          <input type="color" id="modal-color-picker-input" style="width: 48px; height: 36px; padding: 2px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: #1e293b; cursor: pointer;">
+          <input type="text" id="modal-color-hex-input" style="flex: 1; padding: 0.5rem; background: #1e293b; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #f8fafc; font-family: monospace; font-size: 0.9rem;" placeholder="#HEX">
+          <button type="button" class="color-action-btn-primary" id="modal-btn-apply-recolor" style="flex: none; padding: 0.5rem 0.8rem;">Change</button>
+        </div>
+      </div>
+
+      <div class="color-action-group">
+        <label>Merge into Another Color</label>
+        <select class="color-action-select" id="modal-merge-select">
+          <!-- Populated dynamically with other palette colors -->
+        </select>
+        <button type="button" class="color-action-btn-primary" id="modal-btn-merge">Merge Paths</button>
+      </div>
+
+      <div class="color-action-group" style="padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.08);">
+        <button type="button" class="color-action-btn-danger" id="modal-btn-remove-color">🗑️ Make Transparent / Delete Color</button>
       </div>
     </div>
   </div>
