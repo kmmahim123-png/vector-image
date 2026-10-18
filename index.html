@@ -175,6 +175,41 @@
   </header>
 
   <!-- =========================================================================
+       VECTOR MAGIC 3-STEP WIZARD NAVIGATION BAR
+       ========================================================================= -->
+  <nav class="vm-wizard-bar" id="vm-wizard-bar" aria-label="Vectorization Wizard">
+    <div class="vm-wizard-container">
+      <button class="vm-wizard-step active" id="wizard-step-1" data-step="hero">
+        <div class="vm-step-circle">1</div>
+        <div class="vm-step-info">
+          <span class="vm-step-title">Upload Image</span>
+          <span class="vm-step-subtitle">Drop, paste, or select raster</span>
+        </div>
+      </button>
+
+      <span class="vm-wizard-arrow">›</span>
+
+      <button class="vm-wizard-step" id="wizard-step-2" data-step="result">
+        <div class="vm-step-circle">2</div>
+        <div class="vm-step-info">
+          <span class="vm-step-title">Review &amp; Edit</span>
+          <span class="vm-step-subtitle">Inspect &amp; tune curves</span>
+        </div>
+      </button>
+
+      <span class="vm-wizard-arrow">›</span>
+
+      <button class="vm-wizard-step" id="wizard-step-3" data-step="download">
+        <div class="vm-step-circle">3</div>
+        <div class="vm-step-info">
+          <span class="vm-step-title">Download Suite</span>
+          <span class="vm-step-subtitle">SVG • EPS • PDF • 8K PNG</span>
+        </div>
+      </button>
+    </div>
+  </nav>
+
+  <!-- =========================================================================
        HERO & UPLOAD STUDIO
        ========================================================================= -->
   <main id="app-main">
@@ -185,13 +220,13 @@
         <div class="hero-copy">
           <div class="hero-eyebrow">
             <span class="eyebrow-dot"></span>
-            <span>Free Vector Converter • 100% Free Online</span>
+            <span>Vector Magic Quality • 100% Free Online AI Auto-Tracer</span>
           </div>
           <h1 class="hero-title">
-            Free PNG to SVG Converter &amp; <span class="text-gradient">AI Vectorizer</span>
+            Turn your images into clean vector art <span class="vm-magic-text">like magic.</span>
           </h1>
           <p class="hero-lead">
-            Instantly <strong>convert PNG to vector</strong>, <strong>vectorize image</strong> graphics, and turn JPG or bitmap logos into crisp, scalable <strong>SVG</strong>, <strong>EPS</strong>, <strong>DXF</strong>, and <strong>PDF</strong>. Free vector converter with silky-smooth Bézier curves and zero sign-up required.
+            The free <strong>Vector Magic</strong> alternative. Automatically convert JPG, PNG, and bitmap logos into silky-smooth, infinitely scalable <strong>SVG</strong>, <strong>EPS</strong>, <strong>DXF</strong>, and <strong>PDF</strong> vectors with sub-pixel precision Bézier splines.
           </p>
 
           <!-- Upload Drop Zone -->
@@ -491,6 +526,304 @@
            (adsbygoogle = window.adsbygoogle || []).push({});
       </script>
     </div>
+
+    <!-- =========================================================================
+         VECTOR MAGIC SHOWCASE: "STUNNING RESULTS FOR ANY KIND OF IMAGE"
+         Interactive split-sliders comparing Original Bitmaps to Smooth Vectors
+         ========================================================================= -->
+    <section class="vm-gallery-section" id="gallery-showcase">
+      <div class="vm-section-header">
+        <div class="vm-section-badge">
+          <span>✦</span>
+          <span>Interactive Comparison Showcase</span>
+        </div>
+        <h2 class="vm-section-title">
+          Stunning Results for <span class="vm-magic-text">Any Kind of Image</span>
+        </h2>
+        <p class="vm-section-desc">
+          Drag each split slider below to see how our Vector Magic engine turns pixelated bitmaps, jagged mascots, and continuous-tone photos into production-grade vector splines.
+        </p>
+      </div>
+
+      <div class="vm-gallery-grid">
+        <!-- CARD 1: LOGOS & BADGES -->
+        <div class="vm-compare-card">
+          <div class="vm-card-header">
+            <div class="vm-card-title-row">
+              <h3 class="vm-card-title">
+                <span>🛡️</span>
+                <span>Logos &amp; Badges</span>
+              </h3>
+              <span class="vm-card-badge">Clean Geometry</span>
+            </div>
+            <p class="vm-card-subtitle">Sub-pixel curve recovery from noisy anti-aliasing</p>
+          </div>
+
+          <div class="vm-card-stage" id="vm-stage-1">
+            <!-- Left: Original Low-Res Raster -->
+            <div class="vm-card-pane vm-card-pane-raster">
+              <svg viewBox="0 0 360 270" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="logo-pixelate-1" x="0" y="0">
+                    <feGaussianBlur stdDeviation="2.2" result="blur"/>
+                  </filter>
+                  <pattern id="grid-pattern-1" width="6" height="6" patternUnits="userSpaceOnUse">
+                    <rect width="6" height="6" fill="none" stroke="rgba(0,0,0,0.22)" stroke-width="0.75"/>
+                  </pattern>
+                </defs>
+                <rect width="360" height="270" fill="#080f1e"/>
+                <g filter="url(#logo-pixelate-1)" opacity="0.9">
+                  <path d="M 180 35 L 270 65 C 270 170, 180 230, 180 230 C 180 230, 90 170, 90 65 Z" fill="#1e3a8a"/>
+                  <path d="M 180 50 L 255 75 C 255 160, 180 212, 180 212 C 180 212, 105 160, 105 75 Z" fill="#1d4ed8"/>
+                  <polygon points="180,85 192,122 231,122 200,145 212,182 180,160 148,182 160,145 129,122 168,122" fill="#d97706"/>
+                  <path d="M 160 115 L 180 155 L 200 115 H 188 L 180 134 L 172 115 Z" fill="#cbd5e1"/>
+                </g>
+                <rect width="360" height="270" fill="url(#grid-pattern-1)" pointer-events="none"/>
+              </svg>
+            </div>
+
+            <!-- Right: Vector Magic Smooth Splines -->
+            <div class="vm-card-pane vm-card-pane-vector" id="vm-pane-1">
+              <svg viewBox="0 0 360 270" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="shape-rendering: geometricPrecision;">
+                <rect width="360" height="270" fill="#080f1e"/>
+                <path d="M 180 35 L 270 65 C 270 170, 180 230, 180 230 C 180 230, 90 170, 90 65 Z" fill="#1d4ed8" stroke="#1d4ed8" stroke-width="0.5"/>
+                <path d="M 180 50 L 255 75 C 255 160, 180 212, 180 212 C 180 212, 105 160, 105 75 Z" fill="#2563eb" stroke="#2563eb" stroke-width="0.5"/>
+                <polygon points="180,85 192,122 231,122 200,145 212,182 180,160 148,182 160,145 129,122 168,122" fill="#fbbf24" stroke="#fbbf24" stroke-width="0.5"/>
+                <path d="M 160 115 L 180 155 L 200 115 H 188 L 180 134 L 172 115 Z" fill="#ffffff"/>
+                <circle cx="180" cy="100" r="4" fill="#ffffff"/>
+              </svg>
+            </div>
+
+            <span class="vm-tag vm-tag-left">■ Original</span>
+            <span class="vm-tag vm-tag-right">✦ Vector Magic</span>
+
+            <div class="vm-card-divider" id="vm-divider-1">
+              <div class="vm-card-handle">⮜ ⮞</div>
+            </div>
+
+            <input type="range" min="0" max="100" value="50" class="vm-card-slider" data-card="1" title="Slide to compare original vs vector">
+          </div>
+
+          <div class="vm-card-footer">
+            <strong>Auto-Locks Geometry:</strong> Cleans fuzzy antialiasing, eliminates stray speckles, and produces mathematically pure circular arcs and 90° corners.
+          </div>
+        </div>
+
+        <!-- CARD 2: ARTWORK & MASCOTS -->
+        <div class="vm-compare-card">
+          <div class="vm-card-header">
+            <div class="vm-card-title-row">
+              <h3 class="vm-card-title">
+                <span>🦅</span>
+                <span>Artwork &amp; Mascots</span>
+              </h3>
+              <span class="vm-card-badge" style="background: rgba(244, 63, 94, 0.15); color: #fb7185; border-color: rgba(244, 63, 94, 0.3);">Needle Tips</span>
+            </div>
+            <p class="vm-card-subtitle">Preserves acute plumage tips &amp; smooth curves</p>
+          </div>
+
+          <div class="vm-card-stage" id="vm-stage-2">
+            <!-- Left: Original Raster Artwork with Noise -->
+            <div class="vm-card-pane vm-card-pane-raster">
+              <svg viewBox="0 0 360 270" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="mascot-blur-2" x="0" y="0">
+                    <feGaussianBlur stdDeviation="2.0"/>
+                  </filter>
+                  <pattern id="grid-pattern-2" width="6" height="6" patternUnits="userSpaceOnUse">
+                    <rect width="6" height="6" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="0.75"/>
+                  </pattern>
+                </defs>
+                <rect width="360" height="270" fill="#0b101d"/>
+                <g filter="url(#mascot-blur-2)" opacity="0.9">
+                  <path d="M 180 30 C 140 40, 90 85, 75 145 C 95 135, 115 130, 130 130 C 105 155, 95 180, 85 220 C 115 195, 140 185, 165 180 C 150 205, 145 230, 140 245 C 175 215, 205 190, 230 160 C 265 115, 250 50, 180 30 Z" fill="#1e293b"/>
+                  <path d="M 165 45 C 140 60, 120 90, 115 130 C 130 120, 150 115, 170 115 C 150 135, 140 155, 135 185 C 160 165, 180 155, 205 150 C 230 115, 220 70, 165 45 Z" fill="#be123c"/>
+                  <path d="M 230 110 C 255 112, 285 118, 305 138 C 285 152, 260 155, 235 152 C 245 140, 245 125, 230 110 Z" fill="#d97706"/>
+                </g>
+                <rect width="360" height="270" fill="url(#grid-pattern-2)" pointer-events="none"/>
+              </svg>
+            </div>
+
+            <!-- Right: Vector Magic Needle-Sharp SVG -->
+            <div class="vm-card-pane vm-card-pane-vector" id="vm-pane-2">
+              <svg viewBox="0 0 360 270" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="shape-rendering: geometricPrecision;">
+                <rect width="360" height="270" fill="#0b101d"/>
+                <path d="M 180 30 C 140 40, 90 85, 75 145 C 95 135, 115 130, 130 130 C 105 155, 95 180, 85 220 C 115 195, 140 185, 165 180 C 150 205, 145 230, 140 245 C 175 215, 205 190, 230 160 C 265 115, 250 50, 180 30 Z" fill="#1e293b" stroke="#1e293b" stroke-width="0.5"/>
+                <path d="M 165 45 C 140 60, 120 90, 115 130 C 130 120, 150 115, 170 115 C 150 135, 140 155, 135 185 C 160 165, 180 155, 205 150 C 230 115, 220 70, 165 45 Z" fill="#e11d48" stroke="#e11d48" stroke-width="0.5"/>
+                <path d="M 230 110 C 255 112, 285 118, 305 138 C 285 152, 260 155, 235 152 C 245 140, 245 125, 230 110 Z" fill="#f59e0b" stroke="#f59e0b" stroke-width="0.5"/>
+                <path d="M 235 152 C 260 155, 285 152, 305 138 C 290 165, 255 178, 235 170 Z" fill="#d97706" stroke="#d97706" stroke-width="0.5"/>
+                <polygon points="205,108 225,116 208,124 195,116" fill="#ffffff"/>
+                <circle cx="210" cy="116" r="4.5" fill="#0f172a"/>
+                <circle cx="212" cy="114" r="1.5" fill="#ffffff"/>
+              </svg>
+            </div>
+
+            <span class="vm-tag vm-tag-left">■ Original</span>
+            <span class="vm-tag vm-tag-right">✦ Vector Magic</span>
+
+            <div class="vm-card-divider" id="vm-divider-2">
+              <div class="vm-card-handle">⮜ ⮞</div>
+            </div>
+
+            <input type="range" min="0" max="100" value="50" class="vm-card-slider" data-card="2" title="Slide to compare original vs vector">
+          </div>
+
+          <div class="vm-card-footer">
+            <strong>Needle-Sharp Feather Tips:</strong> Engine 9.0 distinguishes smooth organic curvature from acute vertices, giving illustrations the feel of authentic hand-drawn vector art.
+          </div>
+        </div>
+
+        <!-- CARD 3: PHOTOS & CONTINUOUS TONE -->
+        <div class="vm-compare-card">
+          <div class="vm-card-header">
+            <div class="vm-card-title-row">
+              <h3 class="vm-card-title">
+                <span>🌄</span>
+                <span>Photos &amp; Landscapes</span>
+              </h3>
+              <span class="vm-card-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">Gap-Free</span>
+            </div>
+            <p class="vm-card-subtitle">Smooth color fills with zero white hairline seams</p>
+          </div>
+
+          <div class="vm-card-stage" id="vm-stage-3">
+            <!-- Left: Original Raster Photo -->
+            <div class="vm-card-pane vm-card-pane-raster">
+              <svg viewBox="0 0 360 270" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="photo-noise-3" x="0" y="0">
+                    <feGaussianBlur stdDeviation="1.8"/>
+                  </filter>
+                  <pattern id="grid-pattern-3" width="6" height="6" patternUnits="userSpaceOnUse">
+                    <rect width="6" height="6" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="0.75"/>
+                  </pattern>
+                </defs>
+                <rect width="360" height="270" fill="#0f172a"/>
+                <g filter="url(#photo-noise-3)" opacity="0.9">
+                  <rect width="360" height="150" fill="#1e1b4b"/>
+                  <circle cx="180" cy="110" r="48" fill="#ea580c"/>
+                  <circle cx="180" cy="110" r="36" fill="#eab308"/>
+                  <polygon points="40,150 120,70 190,150" fill="#2e1065"/>
+                  <polygon points="150,150 240,55 330,150" fill="#312e81"/>
+                  <path d="M 0 150 Q 70 110 140 150 Q 210 120 280 150 Q 320 135 360 150 L 360 270 L 0 270 Z" fill="#064e3b"/>
+                  <rect y="195" width="360" height="75" fill="#115e59"/>
+                </g>
+                <rect width="360" height="270" fill="url(#grid-pattern-3)" pointer-events="none"/>
+              </svg>
+            </div>
+
+            <!-- Right: Vector Magic Gap-Free Vector Layers -->
+            <div class="vm-card-pane vm-card-pane-vector" id="vm-pane-3">
+              <svg viewBox="0 0 360 270" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="shape-rendering: geometricPrecision;">
+                <rect width="360" height="270" fill="#0f172a"/>
+                <rect width="360" height="150" fill="#1e1b4b"/>
+                <circle cx="180" cy="110" r="48" fill="#fb923c" stroke="#fb923c" stroke-width="0.5"/>
+                <circle cx="180" cy="110" r="36" fill="#fde047" stroke="#fde047" stroke-width="0.5"/>
+                <polygon points="40,150 120,70 190,150" fill="#312e81" stroke="#312e81" stroke-width="0.5"/>
+                <polygon points="150,150 240,55 330,150" fill="#3730a3" stroke="#3730a3" stroke-width="0.5"/>
+                <path d="M 0 150 Q 70 110 140 150 Q 210 120 280 150 Q 320 135 360 150 L 360 270 L 0 270 Z" fill="#065f46" stroke="#065f46" stroke-width="0.5"/>
+                <path d="M 0 175 Q 90 145 180 175 Q 270 150 360 175 L 360 270 L 0 270 Z" fill="#047857" stroke="#047857" stroke-width="0.5"/>
+                <rect y="195" width="360" height="75" fill="#0f766e" stroke="#0f766e" stroke-width="0.5"/>
+                <path d="M 130 195 L 230 195 L 250 270 L 110 270 Z" fill="#f97316" opacity="0.35"/>
+              </svg>
+            </div>
+
+            <span class="vm-tag vm-tag-left">■ Original</span>
+            <span class="vm-tag vm-tag-right">✦ Vector Magic</span>
+
+            <div class="vm-card-divider" id="vm-divider-3">
+              <div class="vm-card-handle">⮜ ⮞</div>
+            </div>
+
+            <input type="range" min="0" max="100" value="50" class="vm-card-slider" data-card="3" title="Slide to compare original vs vector">
+          </div>
+
+          <div class="vm-card-footer">
+            <strong>Zero Hairline Cracks:</strong> By overlapping boundary paths rather than leaving adjacent fractional gaps, output SVGs look continuous and solid at any zoom level.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         VECTOR MAGIC 6-PILLAR FEATURES: "SIMPLY THE BEST AUTO-TRACER IN THE WORLD"
+         ========================================================================= -->
+    <section class="vm-features-section" id="core-advantages">
+      <div class="vm-section-header">
+        <div class="vm-section-badge">
+          <span>⚙️</span>
+          <span>Engine 9.0 Architecture</span>
+        </div>
+        <h2 class="vm-section-title">
+          Simply the <span class="vm-magic-text">Best Auto-Tracer in the World</span>
+        </h2>
+        <p class="vm-section-desc">
+          Compare our Bézier math against traditional tracers. We don't trace pixel blocks—we reconstruct the true mathematical boundaries of your artwork.
+        </p>
+      </div>
+
+      <div class="vm-features-grid">
+        <!-- Feature 1: Sub-pixel Precision -->
+        <div class="vm-feature-card">
+          <div class="vm-feature-icon-wrapper">🎯</div>
+          <h3 class="vm-feature-title">Sub-Pixel Precision</h3>
+          <p class="vm-feature-desc">
+            Standard auto-tracers mistake anti-aliasing pixels for stairsteps. Our engine mathematically models the underlying color transition function to reconstruct the true original continuous curve with fractional sub-pixel accuracy.
+          </p>
+          <span class="vm-feature-pill">Continuous Splines</span>
+        </div>
+
+        <!-- Feature 2: The Right Number of Nodes -->
+        <div class="vm-feature-card">
+          <div class="vm-feature-icon-wrapper">⚡</div>
+          <h3 class="vm-feature-title">The Right Number of Nodes</h3>
+          <p class="vm-feature-desc">
+            Dumping a vertex at every single pixel creates bloated files that bog down Adobe Illustrator, CorelDRAW, and vinyl cutters. Our energy-minimizing solver places anchors only where the curvature genuinely changes.
+          </p>
+          <span class="vm-feature-pill">Minimal Bezier Anchors</span>
+        </div>
+
+        <!-- Feature 3: Stacked Topology -->
+        <div class="vm-feature-card">
+          <div class="vm-feature-icon-wrapper">🛡️</div>
+          <h3 class="vm-feature-title">Stacked Gap-Free Topology</h3>
+          <p class="vm-feature-desc">
+            Adjacent vector shapes in standard SVG viewers often render with faint, unsightly white hairline cracks caused by browser sub-pixel antialiasing. Our stacked boundary algorithm completely eliminates seams.
+          </p>
+          <span class="vm-feature-pill">Zero Hairline Seams</span>
+        </div>
+
+        <!-- Feature 4: Needle Points & Tricky Corners -->
+        <div class="vm-feature-card">
+          <div class="vm-feature-icon-wrapper">📐</div>
+          <h3 class="vm-feature-title">Needle Points &amp; Acute Corners</h3>
+          <p class="vm-feature-desc">
+            Engine 9.0 utilizes adaptive corner detection: gentle curves stay smooth and organic, while acute corners, serif fonts, and needle-thin feather tips retain razor sharpness without rounding.
+          </p>
+          <span class="vm-feature-pill">Engine 9.0 Precision</span>
+        </div>
+
+        <!-- Feature 5: Palette & Knockout -->
+        <div class="vm-feature-card">
+          <div class="vm-feature-icon-wrapper">🎨</div>
+          <h3 class="vm-feature-title">Color Palette &amp; Knockout Tools</h3>
+          <p class="vm-feature-desc">
+            Take total control of your output colors. Easily inspect the detected palette, click ✕ to erase backgrounds into clean transparent cutouts, or merge similar colors for screen printing films.
+          </p>
+          <span class="vm-feature-pill">1-Click Background Removal</span>
+        </div>
+
+        <!-- Feature 6: 100% Free Forever -->
+        <div class="vm-feature-card">
+          <div class="vm-feature-icon-wrapper">💎</div>
+          <h3 class="vm-feature-title">Enterprise Quality, 100% Free</h3>
+          <p class="vm-feature-desc">
+            Vector Magic charges $9.95/month or $295 for desktop licenses. Free Vector Image gives you identical sub-pixel Bézier power, 8K PNG exports, and print-ready formats with zero cost and no sign-up.
+          </p>
+          <span class="vm-feature-pill">No Subscriptions / No Ads</span>
+        </div>
+      </div>
+    </section>
 
     <!-- =========================================================================
          SEO CONTENT SECTIONS: HOW IT WORKS, COMPARISON, AND FAQ

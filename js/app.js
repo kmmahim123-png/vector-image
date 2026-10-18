@@ -100,6 +100,8 @@
     setupDownloadButtons();
     setupEditControls();
     setupHeroSlider();
+    setupVectorMagicGallerySliders();
+    setupWizardBar();
     setupClipboardPaste();
 
     window.addEventListener('resize', () => {
@@ -917,11 +919,109 @@
     }
   }
 
+  /**
+   * Vector Magic Interactive Comparison Gallery Sliders
+   * Controls the 3 split-cards on the homepage (Logos, Mascots, Photos)
+   */
+  function setupVectorMagicGallerySliders() {
+    document.querySelectorAll('.vm-card-slider').forEach((slider) => {
+      const cardNum = slider.dataset.card;
+      const pane = document.getElementById(`vm-pane-${cardNum}`);
+      const divider = document.getElementById(`vm-divider-${cardNum}`);
+      if (pane && divider) {
+        slider.addEventListener('input', (e) => {
+          const val = e.target.value;
+          pane.style.clipPath = `polygon(${val}% 0, 100% 0, 100% 100%, ${val}% 100%)`;
+          divider.style.left = `${val}%`;
+        });
+      }
+    });
+  }
+
+  /**
+   * Vector Magic 3-Step Wizard Navigation Bar
+   */
+  function setupWizardBar() {
+    const step1 = document.getElementById('wizard-step-1');
+    const step2 = document.getElementById('wizard-step-2');
+    const step3 = document.getElementById('wizard-step-3');
+
+    if (step1) {
+      step1.addEventListener('click', () => {
+        showScreen('hero');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    if (step2) {
+      step2.addEventListener('click', () => {
+        if (state.svgString) {
+          showScreen('result');
+          const canvasEl = document.getElementById('canvas-container');
+          if (canvasEl) canvasEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          showScreen('hero');
+          DOM.fileInput.click();
+        }
+      });
+    }
+
+    if (step3) {
+      step3.addEventListener('click', () => {
+        if (state.svgString) {
+          showScreen('result');
+          const dlPanel = document.querySelector('.download-panel');
+          if (dlPanel) dlPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          showScreen('hero');
+          DOM.fileInput.click();
+        }
+      });
+    }
+  }
+
+  function updateWizardState(screenName) {
+    const step1 = document.getElementById('wizard-step-1');
+    const step2 = document.getElementById('wizard-step-2');
+    const step3 = document.getElementById('wizard-step-3');
+    if (!step1 || !step2 || !step3) return;
+
+    step1.classList.remove('active', 'completed');
+    step2.classList.remove('active', 'completed');
+    step3.classList.remove('active', 'completed');
+
+    const circle1 = step1.querySelector('.vm-step-circle');
+    const circle2 = step2.querySelector('.vm-step-circle');
+    const circle3 = step3.querySelector('.vm-step-circle');
+
+    if (screenName === 'hero') {
+      step1.classList.add('active');
+      if (circle1) circle1.textContent = '1';
+      if (circle2) circle2.textContent = '2';
+      if (circle3) circle3.textContent = '3';
+    } else if (screenName === 'processing') {
+      step1.classList.add('completed');
+      if (circle1) circle1.textContent = '✓';
+      step2.classList.add('active');
+      if (circle2) circle2.textContent = '2';
+      if (circle3) circle3.textContent = '3';
+    } else if (screenName === 'result') {
+      step1.classList.add('completed');
+      if (circle1) circle1.textContent = '✓';
+      step2.classList.add('active');
+      if (circle2) circle2.textContent = '2';
+      step3.classList.add('active');
+      if (circle3) circle3.textContent = '3';
+    }
+  }
+
   function showScreen(screenName) {
     state.screen = screenName;
     DOM.heroSection.style.display = screenName === 'hero' ? 'block' : 'none';
     DOM.processingSection.style.display = screenName === 'processing' ? 'flex' : 'none';
     DOM.resultSection.style.display = screenName === 'result' ? 'block' : 'none';
+
+    updateWizardState(screenName);
 
     if (screenName === 'result') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
