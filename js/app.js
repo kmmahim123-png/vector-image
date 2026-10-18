@@ -431,7 +431,48 @@
     DOM.studioPaletteBar.style.display = 'block';
     if (DOM.paletteCountBadge) DOM.paletteCountBadge.textContent = palette.length;
 
+    const vmSwatchesRow = document.getElementById('vm-swatches-card-row');
+    if (vmSwatchesRow) vmSwatchesRow.innerHTML = '';
+
     palette.forEach((item) => {
+      // Also render into right panel Vector Magic card
+      if (vmSwatchesRow) {
+        const cardSwatch = document.createElement('div');
+        cardSwatch.className = 'vm-card-swatch';
+        cardSwatch.style.backgroundColor = item.hex;
+        cardSwatch.title = `${item.hex} (${item.percentage}%) • Click to Recolor`;
+
+        cardSwatch.addEventListener('mouseenter', () => {
+          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+          paths.forEach((p) => { p.style.filter = 'drop-shadow(0 0 6px #06b6d4)'; });
+        });
+        cardSwatch.addEventListener('mouseleave', () => {
+          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+          paths.forEach((p) => { p.style.filter = 'none'; });
+        });
+
+        cardSwatch.addEventListener('click', () => {
+          const colorInput = document.createElement('input');
+          colorInput.type = 'color';
+          colorInput.value = item.hex.length === 7 ? item.hex : '#ffffff';
+          colorInput.style.position = 'fixed';
+          colorInput.style.opacity = '0';
+          document.body.appendChild(colorInput);
+          colorInput.click();
+
+          colorInput.addEventListener('change', () => {
+            const newColor = colorInput.value.toUpperCase();
+            state.svgString = engine.recolorClient({ [item.hex]: newColor });
+            renderVectorPreview();
+            cardSwatch.style.backgroundColor = newColor;
+            cardSwatch.title = `${newColor} • Click to Recolor`;
+            colorInput.remove();
+          });
+        });
+
+        vmSwatchesRow.appendChild(cardSwatch);
+      }
+
       const pill = document.createElement('div');
       pill.className = 'swatch-pill';
       pill.dataset.hex = item.hex;
