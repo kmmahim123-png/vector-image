@@ -258,7 +258,7 @@ def _safe_vtracer_fallback(input_path, output_svg_path, options):
         return {
             "success": True,
             "width": w, "height": h,
-            "origWidth": w, "origHeight": orig_h,
+            "origWidth": w, "origHeight": h,
             "pathsCount": 2, "colorsCount": 2,
             "palette": [{'hex': '#3B82F6', 'count': 1, 'percentage': 80.0}, {'hex': '#FFFFFF', 'count': 1, 'percentage': 20.0}],
             "svgSizeKb": 0.5,
@@ -334,36 +334,36 @@ def _vectorize_segmented_tiling(orig_img, output_svg_path, options, analysis):
 
     if is_logo and is_gradient:
         params = {
-            'filter_speckle': 18,
+            'filter_speckle': 4,
             'color_precision': 7,
-            'layer_difference': 22,
-            'corner_threshold': 75,
-            'length_threshold': 13.0,
-            'max_iterations': 70,
-            'splice_threshold': 64,
+            'layer_difference': 16,
+            'corner_threshold': 52,
+            'length_threshold': 10.0,
+            'max_iterations': 60,
+            'splice_threshold': 55,
             'path_precision': 3
         }
     elif is_logo:
         params = {
-            'filter_speckle': 14,
-            'color_precision': 5,
-            'layer_difference': 48,
-            'corner_threshold': 55,
-            'length_threshold': 12.0,
-            'max_iterations': 48,
-            'splice_threshold': 56,
+            'filter_speckle': 4,
+            'color_precision': 6,
+            'layer_difference': 24,
+            'corner_threshold': 50,
+            'length_threshold': 10.0,
+            'max_iterations': 50,
+            'splice_threshold': 55,
             'path_precision': 3
         }
     else:
         params = {
-            'filter_speckle': 8,
+            'filter_speckle': 4,
             'color_precision': 7,
             'layer_difference': 16,
-            'corner_threshold': 68,
-            'length_threshold': 6.2,
-            'max_iterations': 28,
-            'splice_threshold': 52,
-            'path_precision': 2
+            'corner_threshold': 54,
+            'length_threshold': 8.0,
+            'max_iterations': 45,
+            'splice_threshold': 55,
+            'path_precision': 3
         }
 
     cols = 2
@@ -578,40 +578,61 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     # Tri-Band Edge-Preserving Denoising & Precision Tuning:
     if is_logo and is_gradient_graphic:
         # 1. Gradient Mascots & Rich Graphics (Colorful Bird, Mascot Logos, Gaming Emblems)
-        # Recursive edge-preserving filter eliminates staircases without smearing thin lines or gradients!
-        smooth_bgr = cv2.edgePreservingFilter(bgr, flags=1, sigma_s=40, sigma_r=0.25)
-        filter_speckle = 18 if preset == 'auto' else int(options.get('filter_speckle', 18))
+        # Gentle edge-preserving filter eliminates staircases without smearing thin lines, letters, or gradients
+        smooth_bgr = cv2.edgePreservingFilter(bgr, flags=1, sigma_s=25, sigma_r=0.18)
+        filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
         color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
-        layer_difference = 22 if preset == 'auto' else int(options.get('layer_difference', 22))
-        corner_threshold = 75 if preset == 'auto' else int(options.get('corner_threshold', 75))
-        length_threshold = 13.0 if preset == 'auto' else float(options.get('length_threshold', 13.0))
-        max_iterations = 70 if preset == 'auto' else int(options.get('max_iterations', 70))
-        splice_threshold = 64 if preset == 'auto' else int(options.get('splice_threshold', 64))
+        layer_difference = 16 if preset == 'auto' else int(options.get('layer_difference', 16))
+        corner_threshold = 52 if preset == 'auto' else int(options.get('corner_threshold', 52))
+        length_threshold = 10.0 if preset == 'auto' else float(options.get('length_threshold', 10.0))
+        max_iterations = 60 if preset == 'auto' else int(options.get('max_iterations', 60))
+        splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
         path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
     elif is_logo:
-        # 2. Solid Brand Logos (Pepsi, Coca-Cola, Starbucks, Badges, Typography)
-        # Dual-stage mean-shift + bilateral edge refinement eliminates anti-aliasing color halos!
-        shift_bgr = cv2.pyrMeanShiftFiltering(bgr, sp=8, sr=20)
-        smooth_bgr = cv2.bilateralFilter(shift_bgr, 5, 20, 20)
-        filter_speckle = 14 if preset == 'auto' else int(options.get('filter_speckle', 14))
-        color_precision = 5 if preset == 'auto' else int(options.get('color_precision', 5))
-        layer_difference = 48 if preset == 'auto' else int(options.get('layer_difference', 48))
-        corner_threshold = 55 if preset == 'auto' else int(options.get('corner_threshold', 55))
-        length_threshold = 12.0 if preset == 'auto' else float(options.get('length_threshold', 12.0))
-        max_iterations = 48 if preset == 'auto' else int(options.get('max_iterations', 48))
-        splice_threshold = 56 if preset == 'auto' else int(options.get('splice_threshold', 56))
+        # 2. Solid Brand Logos (Pepsi, Coca-Cola, Starbucks, Wave, Eagle, Typography)
+        # Bilateral filter eliminates anti-aliasing color halos and JPEG ringing while keeping edges 100% crisp
+        smooth_bgr = cv2.bilateralFilter(bgr, 7, 30, 15)
+        if u_colors < 300 and preset == 'auto':
+            # Low-color emblem / line art with JPEG noise / watermarks: snap to dominant palette
+            k_val = 3 if (u_colors < 200 or analysis.get('flat_ratio', 0) > 65.0) else 4
+            pixels = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB).reshape(-1, 3).astype(np.float32)
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.2)
+            _, labels, centers = cv2.kmeans(pixels, k_val, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
+            centers = np.uint8(centers)
+            res_arr = centers[labels.flatten()].reshape(smooth_bgr.shape)
+            smooth_bgr = cv2.cvtColor(res_arr, cv2.COLOR_RGB2BGR)
+
+        filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
+        color_precision = 6 if preset == 'auto' else int(options.get('color_precision', 6))
+        layer_difference = 24 if preset == 'auto' else int(options.get('layer_difference', 24))
+        corner_threshold = 50 if preset == 'auto' else int(options.get('corner_threshold', 50))
+        length_threshold = 10.0 if preset == 'auto' else float(options.get('length_threshold', 10.0))
+        max_iterations = 50 if preset == 'auto' else int(options.get('max_iterations', 50))
+        splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
         path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
     else:
-        # 3. Photographic Raster (Owl, clownfish, landscapes, portraits)
-        smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 32)
-        filter_speckle = int(options.get('filter_speckle', 8))
-        color_precision = int(options.get('color_precision', 7))
-        layer_difference = int(options.get('layer_difference', 16))
-        corner_threshold = int(options.get('corner_threshold', 68))
-        length_threshold = float(options.get('length_threshold', 6.2))
-        max_iterations = int(options.get('max_iterations', 28))
-        splice_threshold = int(options.get('splice_threshold', 52))
-        path_precision = int(options.get('path_precision', 2))
+        # 3. Digital Illustration or Photographic Raster
+        is_illustration = (preset in ('illustration', 'art') or (analysis.get('flat_ratio', 0) > 30.0 and analysis.get('mean_grad', 0) > 35.0))
+        if is_illustration:
+            smooth_bgr = cv2.bilateralFilter(bgr, 7, 30, 14)
+            filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
+            color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
+            layer_difference = 16 if preset == 'auto' else int(options.get('layer_difference', 16))
+            corner_threshold = 54 if preset == 'auto' else int(options.get('corner_threshold', 54))
+            length_threshold = 8.5 if preset == 'auto' else float(options.get('length_threshold', 8.5))
+            max_iterations = 50 if preset == 'auto' else int(options.get('max_iterations', 50))
+            splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
+            path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
+        else:
+            smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 32)
+            filter_speckle = int(options.get('filter_speckle', 6))
+            color_precision = int(options.get('color_precision', 7))
+            layer_difference = int(options.get('layer_difference', 16))
+            corner_threshold = int(options.get('corner_threshold', 68))
+            length_threshold = float(options.get('length_threshold', 6.2))
+            max_iterations = int(options.get('max_iterations', 28))
+            splice_threshold = int(options.get('splice_threshold', 52))
+            path_precision = int(options.get('path_precision', 2))
 
     clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
     Image.fromarray(clean_rgb).save(temp_pre)
@@ -631,12 +652,12 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
         refinement_passes = 1
         # Iterative Refinement Loop:
-        # If logo smoothness is below 93.0%, execute Pass 2 with adaptive curve relaxation
+        # If logo smoothness is below 92.0%, execute Pass 2 with adaptive curve relaxation
         if is_logo:
             c1 = len(re.findall(r'[Cc]', svg_content))
             l1 = len(re.findall(r'[Ll]', svg_content))
             s1 = (c1 / (c1 + l1 or 1)) * 100.0
-            if s1 < 93.0:
+            if s1 < 92.0:
                 with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as p2_tmp:
                     temp_p2 = p2_tmp.name
                 try:
@@ -664,12 +685,18 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             try: os.remove(temp_pre)
             except Exception: pass
 
-    # ONLY strip artificial white background if original image had genuine native alpha:
-    if has_native_alpha:
-        first_path = re.search(r'<path[^>]*>', svg_content)
+    # Clean background stripping when transparent_bg is requested or input had native alpha:
+    should_strip_bg = bool(transparent_bg or has_native_alpha or options.get('remove_bg', False))
+    if should_strip_bg:
+        first_path = re.search(r'<path\b[^>]*\bfill="([^"]+)"[^>]*\/?>', svg_content, re.IGNORECASE)
         if first_path:
-            fill_m = re.search(r'fill="([^"]+)"', first_path.group(0))
-            if fill_m and fill_m.group(1).upper() in ('#FFFFFF', '#FEFEFE', '#FDFDFD', '#FCFCFC', '#FBFBFB', '#FAFAFA'):
+            fill_c = first_path.group(1).upper()
+            is_light_bg = fill_c in (
+                '#FFFFFF', '#FEFEFE', '#FDFDFD', '#FCFCFC', '#FBFBFB', '#FAFAFA',
+                '#F9F9F9', '#F8F8F8', '#F7F7F7', '#F6F6F6', '#F5F5F5', '#F4F4F4',
+                '#F3F3F3', '#F2F2F2', '#F1F1F1', '#F0F0F0', '#EDEDED', '#EAEAEA'
+            )
+            if has_native_alpha or is_light_bg or transparent_bg:
                 svg_content = svg_content[:first_path.start()] + svg_content[first_path.end():]
 
     svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'

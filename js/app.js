@@ -30,11 +30,11 @@
     denoiseLevel: 'low',
     colorsLimit: 0,
     options: {
-      filter_speckle: 8,
-      corner_threshold: 75,
-      length_threshold: 7.0,
+      filter_speckle: 4,
+      corner_threshold: 50,
+      length_threshold: 10.0,
       splice_threshold: 55,
-      max_iterations: 30
+      max_iterations: 50
     }
   };
 
@@ -255,7 +255,7 @@
           colors_limit: state.colorsLimit,
           denoise_level: state.denoiseLevel,
           clean_checkerboard: state.cleanCheckerboard,
-          transparent_bg: false,
+          transparent_bg: state.transparentBg,
           ...state.options
         },
         (progress) => {
