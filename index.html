@@ -424,6 +424,57 @@
             <span class="commercial-license-tag">✓ Lossless Vector • Commercial Safe</span>
           </div>
 
+          <!-- Vector Magic Studio Control: Improve Result -->
+          <div class="vm-studio-card" id="vm-studio-control-card">
+            <div class="vm-studio-card-header">
+              <div class="vm-studio-card-title">
+                <span class="vm-studio-icon">✨</span>
+                <strong>Improve Result</strong>
+              </div>
+              <span class="vm-pro-badge">Vector Magic AI</span>
+            </div>
+
+            <!-- Detail level: Low | Medium | High -->
+            <div class="vm-studio-group">
+              <label class="vm-studio-label">Detail level</label>
+              <div class="vm-toggle-group" id="vm-detail-group">
+                <button type="button" class="vm-toggle-btn" data-detail="low">Low</button>
+                <button type="button" class="vm-toggle-btn" data-detail="medium">Medium</button>
+                <button type="button" class="vm-toggle-btn active" data-detail="high">High</button>
+              </div>
+            </div>
+
+            <!-- Colors: Unlimited (Auto) | Custom -->
+            <div class="vm-studio-group">
+              <label class="vm-studio-label">Colors</label>
+              <div class="vm-toggle-group" id="vm-color-mode-group">
+                <button type="button" class="vm-toggle-btn active" data-colormode="auto">Auto / Unlimited</button>
+                <button type="button" class="vm-toggle-btn" data-colormode="custom">Custom Palette</button>
+              </div>
+
+              <!-- Quick Palette Limit Pills -->
+              <div class="vm-color-pills-row" id="vm-color-pills-row" style="display: none;">
+                <button type="button" class="vm-pill-color" data-k="2">2</button>
+                <button type="button" class="vm-pill-color" data-k="4">4</button>
+                <button type="button" class="vm-pill-color" data-k="6">6</button>
+                <button type="button" class="vm-pill-color" data-k="8">8</button>
+                <button type="button" class="vm-pill-color" data-k="12">12</button>
+                <button type="button" class="vm-pill-color" data-k="16">16</button>
+                <button type="button" class="vm-pill-color" data-k="24">24</button>
+              </div>
+            </div>
+
+            <!-- Quick Background & Update Actions -->
+            <div class="vm-studio-actions">
+              <button type="button" class="vm-btn-action" id="vm-quick-remove-bg">
+                <span class="vm-action-icon">✂️</span> Remove Background
+              </button>
+              <button type="button" class="vm-btn-action vm-btn-retrace" id="vm-quick-retrace">
+                <span class="vm-action-icon">⚡</span> Update Vector
+              </button>
+            </div>
+          </div>
+
           <!-- PRIMARY: Exactly 3 Vector Image Options -->
           <div class="vector-suite-card">
             <div class="vector-suite-header">

@@ -247,7 +247,7 @@
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        const timeoutId = setTimeout(() => controller.abort(), 50000);
 
         const response = await fetch('/api/vectorize', {
           method: 'POST',
@@ -339,10 +339,10 @@
               qtres: 1,
               pathomit: options.filter_speckle || 8,
               rightangleenhance: options.presetKey === 'logo',
-              colorsampling: 2,
+              colorsampling: 1,
               numberofcolors: numColors,
               mincolorratio: 0.01,
-              colorquantcycles: 3,
+              colorquantcycles: 2,
               layering: 0,
               strokewidth: 0.5,
               linefilter: true,

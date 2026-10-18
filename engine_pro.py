@@ -430,6 +430,71 @@ def _vectorize_segmented_tiling(orig_img, output_svg_path, options, analysis):
         "verification": verification
     }
 
+def extract_advanced_palette(arr, target_colors=0):
+    """
+    Vector Magic-Grade Palette Extraction:
+    1. Computes Sobel gradient magnitude to separate flat/uniform regions from anti-aliasing edge halos.
+    2. Clusters flat core colors using K-means ++.
+    3. Merges visually similar color clusters (Euclidean dist < 28) to eliminate JPEG/sub-pixel noise.
+    4. Automatically determines the true intended brand / illustration palette.
+    """
+    h, w, _ = arr.shape
+    gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+    sobelx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+    grad = np.sqrt(sobelx**2 + sobely**2)
+
+    flat_mask = grad < 22.0
+    if np.sum(flat_mask) < (h * w * 0.05):
+        flat_pixels = arr.reshape(-1, 3).astype(np.float32)
+    else:
+        flat_pixels = arr[flat_mask].astype(np.float32)
+
+    if len(flat_pixels) > 50000:
+        indices = np.random.choice(len(flat_pixels), 50000, replace=False)
+        flat_pixels = flat_pixels[indices]
+
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.2)
+
+    if target_colors > 0:
+        k = max(2, min(48, int(target_colors)))
+        _, labels, centers = cv2.kmeans(flat_pixels, k, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
+        counts = np.bincount(labels.flatten())
+        sorted_idx = np.argsort(-counts)
+        return np.uint8(np.round(centers[sorted_idx]))
+
+    # Intelligent Auto Palette Detection:
+    quant4 = (flat_pixels.astype(np.int32) >> 4)
+    unique_buckets = len(np.unique(quant4, axis=0))
+    k_init = min(32, max(8, unique_buckets))
+    _, labels, centers = cv2.kmeans(flat_pixels, k_init, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
+    counts = np.bincount(labels.flatten())
+
+    # Agglomerative cluster merging (Vector Magic style perceptual grouping)
+    merged_centers = []
+    merged_counts = []
+    for c, cnt in sorted(zip(centers, counts), key=lambda x: -x[1]):
+        merged = False
+        for i, (mc, mcnt) in enumerate(zip(merged_centers, merged_counts)):
+            if np.linalg.norm(c - mc) < 28.0:
+                new_cnt = mcnt + cnt
+                merged_centers[i] = (mc * mcnt + c * cnt) / new_cnt
+                merged_counts[i] = new_cnt
+                merged = True
+                break
+        if not merged:
+            merged_centers.append(c)
+            merged_counts.append(cnt)
+
+    total = sum(merged_counts) or 1
+    # Filter out spurious edge-bleed remnants (< 0.2% of flat region)
+    clean = [(c, cnt) for c, cnt in zip(merged_centers, merged_counts) if (cnt / total) >= 0.002]
+    if len(clean) < 2:
+        clean = list(zip(merged_centers[:2], merged_counts[:2]))
+
+    clean_rgb = np.uint8(np.round([c for c, _ in clean]))
+    return clean_rgb
+
 def _vectorize_pro_core(input_path, output_svg_path, options):
     orig_img = Image.open(input_path)
     transparent_bg = options.get('transparent_bg', False)
@@ -575,10 +640,20 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     arr = np.array(rgb_img)
     bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
+    target_k = int(options.get('colors_limit', 0))
+    detail_level = str(options.get('detail_level', 'high')).lower()
+    is_illustration = (preset in ('illustration', 'art') or (analysis.get('flat_ratio', 0) > 30.0 and analysis.get('mean_grad', 0) > 35.0))
+
+    # Vector Magic Palette Extraction:
+    if target_k > 0:
+        palette_rgb = extract_advanced_palette(arr, target_colors=target_k)
+    else:
+        palette_rgb = extract_advanced_palette(arr, target_colors=0)
+
+    palette_hex = [rgb2hex(c) for c in palette_rgb]
+
     # Tri-Band Edge-Preserving Denoising & Precision Tuning:
     if is_logo and is_gradient_graphic:
-        # 1. Gradient Mascots & Rich Graphics (Colorful Bird, Mascot Logos, Gaming Emblems)
-        # Gentle edge-preserving filter eliminates staircases without smearing thin lines, letters, or gradients
         smooth_bgr = cv2.edgePreservingFilter(bgr, flags=1, sigma_s=25, sigma_r=0.18)
         filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
         color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
@@ -589,30 +664,16 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
         path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
     elif is_logo:
-        # 2. Solid Brand Logos (Pepsi, Coca-Cola, Starbucks, Wave, Eagle, Typography)
-        # Bilateral filter eliminates anti-aliasing color halos and JPEG ringing while keeping edges 100% crisp
-        smooth_bgr = cv2.bilateralFilter(bgr, 7, 30, 15)
-        if u_colors < 300 and preset == 'auto':
-            # Low-color emblem / line art with JPEG noise / watermarks: snap to dominant palette
-            k_val = 3 if (u_colors < 200 or analysis.get('flat_ratio', 0) > 65.0) else 4
-            pixels = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB).reshape(-1, 3).astype(np.float32)
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.2)
-            _, labels, centers = cv2.kmeans(pixels, k_val, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
-            centers = np.uint8(centers)
-            res_arr = centers[labels.flatten()].reshape(smooth_bgr.shape)
-            smooth_bgr = cv2.cvtColor(res_arr, cv2.COLOR_RGB2BGR)
-
+        smooth_bgr = cv2.bilateralFilter(bgr, 7, 28, 15)
         filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
-        color_precision = 6 if preset == 'auto' else int(options.get('color_precision', 6))
-        layer_difference = 24 if preset == 'auto' else int(options.get('layer_difference', 24))
+        color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
+        layer_difference = 16 if preset == 'auto' else int(options.get('layer_difference', 16))
         corner_threshold = 50 if preset == 'auto' else int(options.get('corner_threshold', 50))
         length_threshold = 10.0 if preset == 'auto' else float(options.get('length_threshold', 10.0))
         max_iterations = 50 if preset == 'auto' else int(options.get('max_iterations', 50))
         splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
         path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
     else:
-        # 3. Digital Illustration or Photographic Raster
-        is_illustration = (preset in ('illustration', 'art') or (analysis.get('flat_ratio', 0) > 30.0 and analysis.get('mean_grad', 0) > 35.0))
         if is_illustration:
             smooth_bgr = cv2.bilateralFilter(bgr, 7, 30, 14)
             filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
@@ -624,15 +685,35 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
             path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
         else:
-            smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 32)
-            filter_speckle = int(options.get('filter_speckle', 6))
+            smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 28)
+            filter_speckle = int(options.get('filter_speckle', 5))
             color_precision = int(options.get('color_precision', 7))
             layer_difference = int(options.get('layer_difference', 16))
-            corner_threshold = int(options.get('corner_threshold', 68))
-            length_threshold = float(options.get('length_threshold', 6.2))
-            max_iterations = int(options.get('max_iterations', 28))
+            corner_threshold = int(options.get('corner_threshold', 60))
+            length_threshold = float(options.get('length_threshold', 7.5))
+            max_iterations = int(options.get('max_iterations', 35))
             splice_threshold = int(options.get('splice_threshold', 52))
             path_precision = int(options.get('path_precision', 2))
+
+    # Vector Magic Studio Detail Level Override:
+    if detail_level == 'low':
+        filter_speckle = max(filter_speckle, 8)
+        length_threshold = max(length_threshold, 13.0)
+        max_iterations = min(max_iterations, 30)
+        corner_threshold = 42
+        path_precision = 2
+    elif detail_level == 'medium':
+        filter_speckle = max(filter_speckle, 5)
+        length_threshold = max(length_threshold, 9.5)
+        max_iterations = min(max_iterations, 45)
+        corner_threshold = 50
+        path_precision = 2
+    elif detail_level == 'high':
+        filter_speckle = min(filter_speckle, 3)
+        length_threshold = min(length_threshold, 7.0)
+        max_iterations = max(max_iterations, 55)
+        corner_threshold = 60
+        path_precision = 3
 
     clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
     Image.fromarray(clean_rgb).save(temp_pre)
@@ -685,6 +766,21 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             try: os.remove(temp_pre)
             except Exception: pass
 
+    # VECTOR MAGIC PALETTE SNAPPING:
+    # Snap all path fill colors to the nearest true palette center
+    palette_rgb_f = palette_rgb.astype(np.float32)
+
+    def snap_color_fn(match):
+        c_str = match.group(1).upper()
+        if c_str.startswith('#') and len(c_str) == 7:
+            c_rgb = np.array(hex2rgb(c_str), dtype=np.float32)
+            dists = np.sum((palette_rgb_f - c_rgb)**2, axis=1)
+            best_idx = np.argmin(dists)
+            return f'fill="{palette_hex[best_idx]}"'
+        return match.group(0)
+
+    svg_content = re.sub(r'fill="([^"]+)"', snap_color_fn, svg_content)
+
     # Clean background stripping when transparent_bg is requested or input had native alpha:
     should_strip_bg = bool(transparent_bg or has_native_alpha or options.get('remove_bg', False))
     if should_strip_bg:
@@ -711,12 +807,21 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     total_paths = sum(color_counts.values()) or 1
 
     palette_data = []
-    for c, cnt in sorted(color_counts.items(), key=lambda x: x[1], reverse=True):
-        palette_data.append({
-            'hex': c,
-            'count': cnt,
-            'percentage': round((cnt / total_paths) * 100, 1)
-        })
+    for p_hex in palette_hex:
+        cnt = color_counts.get(p_hex, 0)
+        if cnt > 0:
+            palette_data.append({
+                'hex': p_hex,
+                'count': cnt,
+                'percentage': round((cnt / total_paths) * 100, 1)
+            })
+    for c, cnt in color_counts.items():
+        if c not in palette_hex:
+            palette_data.append({
+                'hex': c,
+                'count': cnt,
+                'percentage': round((cnt / total_paths) * 100, 1)
+            })
 
     with open(output_svg_path, 'w', encoding='utf-8') as f:
         f.write(svg_content)

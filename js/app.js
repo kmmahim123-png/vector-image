@@ -29,6 +29,7 @@
     transparentBg: false,
     denoiseLevel: 'low',
     colorsLimit: 0,
+    detailLevel: 'high',
     options: {
       filter_speckle: 4,
       corner_threshold: 50,
@@ -99,6 +100,7 @@
     setupViewerControls();
     setupDownloadButtons();
     setupEditControls();
+    setupVectorMagicStudioControls();
     setupHeroSlider();
     setupVectorMagicGallerySliders();
     setupWizardBar();
@@ -255,6 +257,7 @@
         {
           presetKey: state.currentPreset,
           colors_limit: state.colorsLimit,
+          detail_level: state.detailLevel,
           denoise_level: state.denoiseLevel,
           clean_checkerboard: state.cleanCheckerboard,
           transparent_bg: state.transparentBg,
@@ -905,6 +908,87 @@
         processImageSource(state.originalImage.src, state.fileName);
       }
     });
+  }
+
+  /**
+   * Vector Magic Studio Controls: Detail Level, Color Mode, Limit Pills, Quick Actions
+   */
+  function setupVectorMagicStudioControls() {
+    // Detail Level: Low | Medium | High
+    const detailBtns = document.querySelectorAll('#vm-detail-group .vm-toggle-btn');
+    detailBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        detailBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.detailLevel = btn.dataset.detail || 'high';
+        if (state.originalImage) {
+          processImageSource(state.originalImage.src, state.fileName);
+        }
+      });
+    });
+
+    // Colors Mode: Auto / Unlimited vs Custom Palette
+    const colorModeBtns = document.querySelectorAll('#vm-color-mode-group .vm-toggle-btn');
+    const pillsRow = document.getElementById('vm-color-pills-row');
+    colorModeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        colorModeBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        const mode = btn.dataset.colormode;
+        if (mode === 'custom') {
+          if (pillsRow) pillsRow.style.display = 'flex';
+          if (state.colorsLimit === 0) state.colorsLimit = 8;
+        } else {
+          if (pillsRow) pillsRow.style.display = 'none';
+          state.colorsLimit = 0;
+          if (state.originalImage) {
+            processImageSource(state.originalImage.src, state.fileName);
+          }
+        }
+      });
+    });
+
+    // Quick Palette Limit Pills (2, 4, 6, 8, 12, 16, 24)
+    const pillBtns = document.querySelectorAll('.vm-pill-color');
+    pillBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        pillBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.colorsLimit = parseInt(btn.dataset.k, 10);
+        if (state.originalImage) {
+          processImageSource(state.originalImage.src, state.fileName);
+        }
+      });
+    });
+
+    // 1-Click Remove Background
+    const btnQuickRemoveBg = document.getElementById('vm-quick-remove-bg');
+    if (btnQuickRemoveBg) {
+      btnQuickRemoveBg.addEventListener('click', () => {
+        state.transparentBg = !state.transparentBg;
+        btnQuickRemoveBg.classList.toggle('active', state.transparentBg);
+        btnQuickRemoveBg.innerHTML = state.transparentBg
+          ? '<span class="vm-action-icon">✓</span> Transparent'
+          : '<span class="vm-action-icon">✂️</span> Remove Background';
+
+        if (state.svgString) {
+          if (state.transparentBg) {
+            state.svgString = state.svgString.replace(/<rect id="studio-bg-rect"[^>]*\/>/i, '');
+          }
+          renderVectorPreview();
+        }
+      });
+    }
+
+    // Quick Update Vector / Re-trace
+    const btnQuickRetrace = document.getElementById('vm-quick-retrace');
+    if (btnQuickRetrace) {
+      btnQuickRetrace.addEventListener('click', () => {
+        if (state.originalImage) {
+          processImageSource(state.originalImage.src, state.fileName);
+        }
+      });
+    }
   }
 
   function setupHeroSlider() {
