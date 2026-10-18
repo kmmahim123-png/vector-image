@@ -475,8 +475,13 @@ def extract_advanced_palette(arr, target_colors=0):
     merged_counts = []
     for c, cnt in sorted(zip(centers, counts), key=lambda x: -x[1]):
         merged = False
+        lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
         for i, (mc, mcnt) in enumerate(zip(merged_centers, merged_counts)):
-            if np.linalg.norm(c - mc) < 28.0:
+            m_lum = 0.299 * mc[0] + 0.587 * mc[1] + 0.114 * mc[2]
+            dist = np.linalg.norm(c - mc)
+            is_near_black = (lum < 50 and m_lum < 50 and dist < 55.0)
+            is_near_white = (lum > 235 and m_lum > 235 and dist < 45.0)
+            if dist < 28.0 or is_near_black or is_near_white:
                 new_cnt = mcnt + cnt
                 merged_centers[i] = (mc * mcnt + c * cnt) / new_cnt
                 merged_counts[i] = new_cnt
@@ -652,70 +657,70 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
     palette_hex = [rgb2hex(c) for c in palette_rgb]
 
-    # Tri-Band Edge-Preserving Denoising & Precision Tuning:
-    if is_logo and is_gradient_graphic:
-        smooth_bgr = cv2.edgePreservingFilter(bgr, flags=1, sigma_s=25, sigma_r=0.18)
-        filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
-        color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
-        layer_difference = 16 if preset == 'auto' else int(options.get('layer_difference', 16))
-        corner_threshold = 52 if preset == 'auto' else int(options.get('corner_threshold', 52))
-        length_threshold = 10.0 if preset == 'auto' else float(options.get('length_threshold', 10.0))
-        max_iterations = 60 if preset == 'auto' else int(options.get('max_iterations', 60))
-        splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
-        path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
-    elif is_logo:
-        smooth_bgr = cv2.bilateralFilter(bgr, 7, 28, 15)
-        filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
-        color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
-        layer_difference = 16 if preset == 'auto' else int(options.get('layer_difference', 16))
-        corner_threshold = 50 if preset == 'auto' else int(options.get('corner_threshold', 50))
-        length_threshold = 10.0 if preset == 'auto' else float(options.get('length_threshold', 10.0))
-        max_iterations = 50 if preset == 'auto' else int(options.get('max_iterations', 50))
-        splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
-        path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
-    else:
-        if is_illustration:
-            smooth_bgr = cv2.bilateralFilter(bgr, 7, 30, 14)
-            filter_speckle = 4 if preset == 'auto' else int(options.get('filter_speckle', 4))
-            color_precision = 7 if preset == 'auto' else int(options.get('color_precision', 7))
-            layer_difference = 16 if preset == 'auto' else int(options.get('layer_difference', 16))
-            corner_threshold = 54 if preset == 'auto' else int(options.get('corner_threshold', 54))
-            length_threshold = 8.5 if preset == 'auto' else float(options.get('length_threshold', 8.5))
-            max_iterations = 50 if preset == 'auto' else int(options.get('max_iterations', 50))
-            splice_threshold = 55 if preset == 'auto' else int(options.get('splice_threshold', 55))
-            path_precision = 3 if preset == 'auto' else int(options.get('path_precision', 3))
-        else:
-            smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 28)
-            filter_speckle = int(options.get('filter_speckle', 5))
-            color_precision = int(options.get('color_precision', 7))
-            layer_difference = int(options.get('layer_difference', 16))
-            corner_threshold = int(options.get('corner_threshold', 60))
-            length_threshold = float(options.get('length_threshold', 7.5))
-            max_iterations = int(options.get('max_iterations', 35))
-            splice_threshold = int(options.get('splice_threshold', 52))
-            path_precision = int(options.get('path_precision', 2))
+    # Vector Magic Sub-Pixel Boundary Regularization:
+    # Transforms discrete pixel staircase noise into silky continuous Bézier splines
+    use_vm_regularization = bool(is_logo or len(palette_rgb) <= 24 or preset in ('auto', 'logo', 'clipart', 'badge'))
+    if use_vm_regularization:
+        K = len(palette_rgb)
+        pixels = arr.astype(np.float32)
+        palette_f = palette_rgb.astype(np.float32)
+        dists = np.linalg.norm(pixels[:, :, None, :] - palette_f[None, None, :, :], axis=-1)
+        inv_dists = np.exp(-dists / 28.0)
+        probs = inv_dists / np.sum(inv_dists, axis=-1, keepdims=True)
 
-    # Vector Magic Studio Detail Level Override:
-    if detail_level == 'low':
-        filter_speckle = max(filter_speckle, 8)
-        length_threshold = max(length_threshold, 13.0)
-        max_iterations = min(max_iterations, 30)
-        corner_threshold = 42
-        path_precision = 2
-    elif detail_level == 'medium':
-        filter_speckle = max(filter_speckle, 5)
-        length_threshold = max(length_threshold, 9.5)
-        max_iterations = min(max_iterations, 45)
-        corner_threshold = 50
-        path_precision = 2
-    elif detail_level == 'high':
-        filter_speckle = min(filter_speckle, 3)
-        length_threshold = min(length_threshold, 7.0)
-        max_iterations = max(max_iterations, 55)
-        corner_threshold = 60
+        # Stroke continuity preservation (bridge sub-pixel micro-gaps in dark outlines)
+        lums = [0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] for c in palette_rgb]
+        dark_idx = int(np.argmin(lums))
+        if lums[dark_idx] < 70:
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            probs[:, :, dark_idx] = cv2.morphologyEx(probs[:, :, dark_idx], cv2.MORPH_CLOSE, kernel)
+
+        # Vector Magic Studio Detail Level Override:
+        if detail_level == 'low':
+            sigma_base = 3.6
+            corner_threshold = 85
+            length_threshold = 3.5
+            filter_speckle = 8
+            max_iterations = 50
+        elif detail_level == 'medium':
+            sigma_base = 3.0
+            corner_threshold = 80
+            length_threshold = 3.5
+            filter_speckle = 6
+            max_iterations = 60
+        else: # high (default)
+            sigma_base = 2.4
+            corner_threshold = 78
+            length_threshold = 3.5
+            filter_speckle = 4
+            max_iterations = 65
+
+        for k in range(K):
+            s_k = sigma_base * 0.85 if k == dark_idx else sigma_base
+            probs[:, :, k] = cv2.GaussianBlur(probs[:, :, k], (0, 0), s_k)
+
+        if lums[dark_idx] < 70:
+            probs[:, :, dark_idx] *= 1.25
+
+        labels = np.argmax(probs, axis=-1)
+        clean_rgb = palette_rgb[labels].astype(np.uint8)
+        color_precision = 8
+        layer_difference = 16
+        splice_threshold = 60
         path_precision = 3
+    else:
+        # Photographic / complex artwork raster path
+        smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 28)
+        filter_speckle = int(options.get('filter_speckle', 5))
+        color_precision = int(options.get('color_precision', 7))
+        layer_difference = int(options.get('layer_difference', 16))
+        corner_threshold = int(options.get('corner_threshold', 60))
+        length_threshold = float(options.get('length_threshold', 5.0))
+        max_iterations = int(options.get('max_iterations', 35))
+        splice_threshold = int(options.get('splice_threshold', 52))
+        path_precision = int(options.get('path_precision', 2))
+        clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
 
-    clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
     Image.fromarray(clean_rgb).save(temp_pre)
 
     try:
@@ -732,35 +737,6 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             svg_content = f.read()
 
         refinement_passes = 1
-        # Iterative Refinement Loop:
-        # If logo smoothness is below 92.0%, execute Pass 2 with adaptive curve relaxation
-        if is_logo:
-            c1 = len(re.findall(r'[Cc]', svg_content))
-            l1 = len(re.findall(r'[Ll]', svg_content))
-            s1 = (c1 / (c1 + l1 or 1)) * 100.0
-            if s1 < 92.0:
-                with tempfile.NamedTemporaryFile(suffix='.svg', delete=False) as p2_tmp:
-                    temp_p2 = p2_tmp.name
-                try:
-                    vtracer.convert_image_to_svg_py(
-                        temp_pre, temp_p2,
-                        'color', 'stacked', 'spline',
-                        filter_speckle, color_precision, layer_difference,
-                        max(40, corner_threshold - 4), min(16.0, length_threshold + 2.0),
-                        max_iterations + 10, min(70, splice_threshold + 4), path_precision
-                    )
-                    with open(temp_p2, 'r', encoding='utf-8', errors='ignore') as f2:
-                        svg_p2 = f2.read()
-                    c2 = len(re.findall(r'[Cc]', svg_p2))
-                    l2 = len(re.findall(r'[Ll]', svg_p2))
-                    s2 = (c2 / (c2 + l2 or 1)) * 100.0
-                    if s2 >= s1:
-                        svg_content = svg_p2
-                    refinement_passes = 2
-                finally:
-                    if os.path.exists(temp_p2):
-                        try: os.remove(temp_p2)
-                        except Exception: pass
     finally:
         if os.path.exists(temp_pre):
             try: os.remove(temp_pre)
