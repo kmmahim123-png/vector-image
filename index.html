@@ -160,6 +160,7 @@
       <nav>
         <ul class="nav-links">
           <li><a href="#hero-section" class="active"><span>⚡</span> Vectorize</a></li>
+          <li><a href="#vector-max-section" style="color: #fb923c; font-weight: 700;"><span>🔥</span> Vector MAX</a></li>
           <li><a href="#how-it-works"><span>📖</span> How It Works</a></li>
           <li><a href="#comparison"><span>⚖️</span> Compare</a></li>
           <li><a href="#faq"><span>❓</span> FAQ</a></li>
@@ -229,27 +230,52 @@
             The free <strong>Vector Magic</strong> alternative. Automatically convert JPG, PNG, and bitmap logos into silky-smooth, infinitely scalable <strong>SVG</strong>, <strong>EPS</strong>, <strong>DXF</strong>, and <strong>PDF</strong> vectors with sub-pixel precision Bézier splines.
           </p>
 
+          <!-- Dual Engine Mode Selector Tabs -->
+          <div class="engine-mode-tabs" id="engine-mode-tabs">
+            <button type="button" class="engine-tab-btn active" data-engine="magic" id="tab-engine-magic">
+              <span class="engine-tab-icon">✨</span>
+              <div class="engine-tab-text">
+                <span class="engine-tab-title">Vector Magic (Default)</span>
+                <span class="engine-tab-sub">Logos, Mascots &amp; Clean Geometry</span>
+              </div>
+              <span class="engine-tab-pill">SMOOTH</span>
+            </button>
+
+            <button type="button" class="engine-tab-btn tab-max" data-engine="max" id="tab-engine-max">
+              <span class="engine-tab-icon">🔥</span>
+              <div class="engine-tab-text">
+                <span class="engine-tab-title">Vector MAX (Separate)</span>
+                <span class="engine-tab-sub">Intricate Artworks, Feathers &amp; Photos</span>
+              </div>
+              <span class="engine-tab-pill pill-max">MAX DETAIL</span>
+            </button>
+          </div>
+
           <!-- Upload Drop Zone -->
           <div class="fv-drop-zone" id="drop-zone">
             <input type="file" id="file-input" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" style="display: none;">
             
             <button class="wand-button" id="upload-btn">
               <span>✨</span>
-              <span>Vectorize Image Now</span>
+              <span id="upload-btn-text">Vectorize Image Now</span>
             </button>
 
             <div>
-              <div class="upload-text-main">Drag &amp; drop an image here to vectorize</div>
+              <div class="upload-text-main" id="dropzone-text-main">Drag &amp; drop an image here to vectorize</div>
               <div class="upload-text-sub">or paste directly with <kbd>Ctrl</kbd> + <kbd>V</kbd></div>
             </div>
 
-            <p class="upload-meta">Supports JPG, PNG, WEBP, and BMP up to 25 Megapixels • 100% Free</p>
+            <p class="upload-meta" id="dropzone-meta">Supports JPG, PNG, WEBP, and BMP up to 25 Megapixels • 100% Free</p>
           </div>
 
           <!-- Instant Trial Samples -->
           <div class="samples-container">
             <div class="samples-header">Or test instant sample images:</div>
             <div class="samples-grid">
+              <div class="sample-card" data-sample="owl" title="Vector MAX Rainbow Owl - Test 5,000+ intricate feather splines & deep colors">
+                <img id="sample-img-owl" class="sample-thumb" alt="Vector MAX Owl" src="assets/samples/owl_max_sample.png">
+                <span class="sample-label">🔥 Vector MAX Owl</span>
+              </div>
               <div class="sample-card" data-sample="waterfall" title="Waterfall Landscape - Test multi-color landscape vectorization without white cracks">
                 <img id="sample-img-waterfall" class="sample-thumb" alt="Waterfall Landscape">
                 <span class="sample-label">Waterfall Landscape</span>
@@ -429,6 +455,28 @@
           <div class="download-title-wrapper">
             <h2 class="download-title">Download Studio</h2>
             <span class="commercial-license-tag">✓ Lossless Vector • Commercial Safe</span>
+          </div>
+
+          <!-- Vector MAX Turbo Upgrade Card: For users not satisfied with smooth logo curves -->
+          <div class="vm-turbo-max-card" id="vm-turbo-max-card">
+            <div class="vm-turbo-header">
+              <div class="vm-turbo-title">
+                <span class="vm-turbo-flame">🔥</span>
+                <strong id="vm-turbo-status-title">Need More Detail?</strong>
+              </div>
+              <span class="vm-turbo-badge" id="vm-turbo-status-badge">Vector MAX</span>
+            </div>
+            <p class="vm-turbo-desc" id="vm-turbo-status-desc">
+              Not satisfied with smooth logo curves? Unlock <strong>Vector MAX</strong> for complex artworks, paintings, and fine feathers:
+            </p>
+            <button type="button" class="btn-vector-max-upgrade" id="btn-retrace-vector-max">
+              <span class="btn-max-icon">⚡</span>
+              <div class="btn-max-text">
+                <span class="btn-max-title" id="btn-max-action-title">Re-Vectorize with Vector MAX</span>
+                <span class="btn-max-sub" id="btn-max-action-sub">Unlock 3,000+ to 5,000+ micro-splines &amp; deep gradients</span>
+              </div>
+              <span class="btn-max-pill" id="btn-max-action-pill">UPGRADE</span>
+            </button>
           </div>
 
           <!-- Vector Magic Studio Control: Improve Result -->
@@ -813,6 +861,61 @@
 
           <div class="vm-card-footer">
             <strong>Zero Hairline Cracks:</strong> By overlapping boundary paths rather than leaving adjacent fractional gaps, output SVGs look continuous and solid at any zoom level.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SECTION: VECTOR MAX™ ULTRA-HIGH DETAIL STUDIO & SEPARATE UPLOAD
+         Dedicated for intricate artworks, oil paintings, feathers & detailed photos
+         ========================================================================= -->
+    <section class="vector-max-section" id="vector-max-section">
+      <div class="vmax-section-card">
+        <div class="vmax-grid">
+          <div>
+            <div class="vmax-badge">
+              <span>🔥</span>
+              <span>Dedicated Photo &amp; Fine Art Engine</span>
+            </div>
+            <h2 class="vmax-title">
+              Vector MAX™ <span>Extreme Detail</span>
+            </h2>
+            <p class="vmax-desc">
+              Have an image with thousands of feather textures, mosaic brushstrokes, multi-color scenery, or fine art? <strong>Vector MAX</strong> bypasses aggressive logo clustering, generating over <strong>3,000+ to 5,000+ micro-splines</strong> with full continuous color fidelity.
+            </p>
+
+            <div class="vmax-drop-zone" id="vmax-drop-zone">
+              <input type="file" id="vmax-file-input" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" style="display: none;">
+              <button type="button" class="btn-vmax-upload" id="btn-vmax-upload">
+                <span>🔥</span>
+                <span>Upload to Vector MAX</span>
+              </button>
+              <div>
+                <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">Drag &amp; drop detailed art or photo here</div>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem;">Processed immediately with Vector MAX 5,000+ splines pipeline</div>
+              </div>
+            </div>
+
+            <!-- Instant Owl Sample Card for Vector MAX -->
+            <div class="vmax-sample-card" id="vmax-sample-owl" title="Click to test Vector MAX with this 5,000+ splines rainbow owl">
+              <img src="assets/samples/owl_max_sample.png" alt="Rainbow Owl Vector MAX" class="vmax-sample-img">
+              <div style="flex: 1;">
+                <div style="font-weight: 700; color: #f8fafc; font-size: 0.85rem;">Test Rainbow Feather Owl Sample</div>
+                <div style="font-size: 0.75rem; color: #fb923c;">5,147 Micro-Splines • Intricate Feathers &amp; Eyes</div>
+              </div>
+              <span style="font-size: 0.72rem; font-weight: 800; color: #fb923c; background: rgba(249,115,22,0.15); padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid rgba(249,115,22,0.3);">TEST MAX ⚡</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem; justify-content: center; align-items: center;">
+            <div style="position: relative; border-radius: 14px; overflow: hidden; border: 1px solid rgba(249,115,22,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.6); max-width: 420px; width: 100%;">
+              <img src="assets/samples/owl_max_sample.png" alt="Vector MAX Detail Example" style="width: 100%; height: auto; display: block;">
+              <div style="position: absolute; bottom: 0; inset-inline: 0; background: linear-gradient(180deg, transparent 0%, rgba(15,23,42,0.95) 100%); padding: 1.25rem 1rem 0.85rem; text-align: center;">
+                <span style="font-size: 0.72rem; font-weight: 800; color: #fb923c; letter-spacing: 0.08em; text-transform: uppercase;">Vector MAX Result: 5,147 Splines</span>
+                <p style="font-size: 0.78rem; color: #e2e8f0; margin-top: 0.2rem;">Every feather contour, rainbow gradient, and eye reflection preserved in pure vector.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -290,6 +290,13 @@
 
       ctx.restore();
       return canvas.toDataURL('image/png');
+    },
+
+    /**
+     * 5. Vector MAX Ultra-Detail Rainbow Owl Sample
+     */
+    createOwlSample() {
+      return 'assets/samples/owl_max_sample.png';
     }
   };
 

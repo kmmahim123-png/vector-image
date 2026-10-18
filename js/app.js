@@ -106,6 +106,8 @@
     setupWizardBar();
     setupClipboardPaste();
     setupColorActionModal();
+    setupEngineModeTabs();
+    setupVectorMaxSectionUpload();
 
     window.addEventListener('resize', () => {
       if (state.screen === 'result') {
@@ -119,12 +121,15 @@
       const birdSample = window.SampleGenerator.createBirdSample();
       const logoSample = window.SampleGenerator.createLogoSample();
       const mandalaSample = window.SampleGenerator.createMandalaSample();
+      const owlSample = window.SampleGenerator.createOwlSample();
 
+      const imgOwl = document.getElementById('sample-img-owl');
       const img1 = document.getElementById('sample-img-waterfall');
       const img2 = document.getElementById('sample-img-bird');
       const img3 = document.getElementById('sample-img-logo');
       const img4 = document.getElementById('sample-img-mandala');
 
+      if (imgOwl) imgOwl.src = owlSample;
       if (img1) img1.src = waterfallSample;
       if (img2) img2.src = birdSample;
       if (img3) img3.src = logoSample;
@@ -206,7 +211,12 @@
         let sampleName = 'vector-sample.png';
         let suggestedPreset = 'logo';
 
-        if (sampleType === 'waterfall') {
+        if (sampleType === 'owl') {
+          dataUrl = window.SampleGenerator.createOwlSample();
+          sampleName = 'Rainbow_Owl_Vector_MAX.png';
+          suggestedPreset = 'vector_max';
+          state.colorsLimit = 0;
+        } else if (sampleType === 'waterfall') {
           dataUrl = window.SampleGenerator.createWaterfallSample();
           sampleName = 'Waterfall_Landscape.png';
           suggestedPreset = 'illustration';
@@ -280,6 +290,7 @@
       renderVectorPreview();
       updateStatsUI();
       renderPaletteBar(state.palette);
+      updateVectorMaxStudioUI();
       resetZoomAndPan();
 
       showScreen('result');
@@ -299,6 +310,7 @@
         renderVectorPreview();
         updateStatsUI();
         renderPaletteBar(state.palette);
+        updateVectorMaxStudioUI();
         resetZoomAndPan();
         showScreen('result');
       } catch (finalErr) {
@@ -312,11 +324,15 @@
   function updatePresetBadge() {
     const p = window.VectorEngine.Presets[state.currentPreset];
     if (p && DOM.presetBadge) {
-      const v = state.verification;
-      if (v && v.classification && state.currentPreset === 'auto') {
-        DOM.presetBadge.textContent = `🎯 Auto Precision: ${v.classification}`;
+      if (state.currentPreset === 'vector_max') {
+        DOM.presetBadge.textContent = '🔥 Vector MAX (Ultra-Detail)';
       } else {
-        DOM.presetBadge.textContent = `✨ ${p.name}`;
+        const v = state.verification;
+        if (v && v.classification && state.currentPreset === 'auto') {
+          DOM.presetBadge.textContent = `🎯 Auto Precision: ${v.classification}`;
+        } else {
+          DOM.presetBadge.textContent = `✨ ${p.name}`;
+        }
       }
     }
   }
@@ -1225,6 +1241,148 @@
         if (state.originalImage) {
           processImageSource(state.originalImage.src, state.fileName);
         }
+      });
+    }
+
+    // Vector MAX Turbo Re-Trace Button: Allows switching between logo mode and Vector MAX micro-detail mode
+    const btnRetraceMax = document.getElementById('btn-retrace-vector-max');
+    if (btnRetraceMax) {
+      btnRetraceMax.addEventListener('click', () => {
+        if (!state.originalImage) return;
+        if (state.currentPreset === 'vector_max') {
+          state.currentPreset = 'auto';
+        } else {
+          state.currentPreset = 'vector_max';
+        }
+        updateVectorMaxStudioUI();
+        processImageSource(state.originalImage.src, state.fileName);
+      });
+    }
+  }
+
+  function updateVectorMaxStudioUI() {
+    const isMax = (state.currentPreset === 'vector_max');
+    const turboCard = document.getElementById('vm-turbo-max-card');
+    const statusTitle = document.getElementById('vm-turbo-status-title');
+    const statusBadge = document.getElementById('vm-turbo-status-badge');
+    const statusDesc = document.getElementById('vm-turbo-status-desc');
+    const actionTitle = document.getElementById('btn-max-action-title');
+    const actionSub = document.getElementById('btn-max-action-sub');
+    const actionPill = document.getElementById('btn-max-action-pill');
+
+    if (turboCard && statusTitle && actionTitle) {
+      if (isMax) {
+        statusTitle.textContent = 'Vector MAX Active';
+        if (statusBadge) {
+          statusBadge.textContent = 'ACTIVE';
+          statusBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+          statusBadge.style.color = '#34d399';
+          statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+        }
+        if (statusDesc) statusDesc.textContent = 'Rendering with 3,000+ to 5,000+ micro-splines and continuous color fidelity.';
+        actionTitle.textContent = 'Switch to Vector Magic (Clean Logo Mode)';
+        if (actionSub) actionSub.textContent = 'Silky continuous splines & discrete brand colors';
+        if (actionPill) actionPill.textContent = 'STANDARD';
+      } else {
+        statusTitle.textContent = 'Need More Detail?';
+        if (statusBadge) {
+          statusBadge.textContent = 'Vector MAX';
+          statusBadge.style.background = 'rgba(249, 115, 22, 0.2)';
+          statusBadge.style.color = '#fb923c';
+          statusBadge.style.borderColor = 'rgba(249, 115, 22, 0.5)';
+        }
+        if (statusDesc) statusDesc.textContent = 'Not satisfied with smooth logo curves? Unlock Vector MAX for complex artworks, paintings, and fine feathers:';
+        actionTitle.textContent = 'Re-Vectorize with Vector MAX';
+        if (actionSub) actionSub.textContent = 'Unlock 3,000+ to 5,000+ micro-splines & deep gradients';
+        if (actionPill) actionPill.textContent = 'UPGRADE';
+      }
+    }
+  }
+
+  /**
+   * Dual Engine Mode Tabs (Vector Magic vs Vector MAX) on Hero
+   */
+  function setupEngineModeTabs() {
+    const tabMagic = document.getElementById('tab-engine-magic');
+    const tabMax = document.getElementById('tab-engine-max');
+    const uploadBtnText = document.getElementById('upload-btn-text');
+    const dropzoneMain = document.getElementById('dropzone-text-main');
+    const dropzoneMeta = document.getElementById('dropzone-meta');
+
+    if (!tabMagic || !tabMax) return;
+
+    tabMagic.addEventListener('click', () => {
+      tabMagic.classList.add('active');
+      tabMax.classList.remove('active');
+      state.currentPreset = 'auto';
+      if (uploadBtnText) uploadBtnText.textContent = 'Vectorize Image Now';
+      if (dropzoneMain) dropzoneMain.textContent = 'Drag & drop an image here to vectorize';
+      if (dropzoneMeta) dropzoneMeta.textContent = 'Vector Magic Sub-Pixel Precision • Clean Brand Colors • 100% Free';
+    });
+
+    tabMax.addEventListener('click', () => {
+      tabMax.classList.add('active');
+      tabMagic.classList.remove('active');
+      state.currentPreset = 'vector_max';
+      if (uploadBtnText) uploadBtnText.textContent = '🔥 Vectorize with Vector MAX';
+      if (dropzoneMain) dropzoneMain.textContent = 'Drag & drop complex artwork or photo for Vector MAX';
+      if (dropzoneMeta) dropzoneMeta.textContent = 'Vector MAX™ Engine • 3,000+ to 5,000+ Micro-Splines & Gradients • 100% Free';
+    });
+  }
+
+  /**
+   * Dedicated Vector MAX Section with Separate Upload Dropzone
+   */
+  function setupVectorMaxSectionUpload() {
+    const vmaxDropZone = document.getElementById('vmax-drop-zone');
+    const vmaxFileInput = document.getElementById('vmax-file-input');
+    const btnVmaxUpload = document.getElementById('btn-vmax-upload');
+    const vmaxSampleOwl = document.getElementById('vmax-sample-owl');
+
+    if (btnVmaxUpload && vmaxFileInput) {
+      btnVmaxUpload.addEventListener('click', () => {
+        vmaxFileInput.click();
+      });
+
+      vmaxFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          state.currentPreset = 'vector_max';
+          handleFileSelect(e.target.files[0], 'vector-max-artwork.png');
+        }
+      });
+    }
+
+    if (vmaxDropZone) {
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        vmaxDropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          vmaxDropZone.classList.add('dragover');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((eventName) => {
+        vmaxDropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          vmaxDropZone.classList.remove('dragover');
+        });
+      });
+
+      vmaxDropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt.files && dt.files[0]) {
+          state.currentPreset = 'vector_max';
+          handleFileSelect(dt.files[0], 'vector-max-artwork.png');
+        }
+      });
+    }
+
+    if (vmaxSampleOwl) {
+      vmaxSampleOwl.addEventListener('click', () => {
+        state.currentPreset = 'vector_max';
+        const dataUrl = window.SampleGenerator.createOwlSample();
+        processImageSource(dataUrl, 'Rainbow_Owl_Vector_MAX.png');
       });
     }
   }

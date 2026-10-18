@@ -3070,5 +3070,351 @@ input[type="range"] {
   }
 }
 
+/* ==========================================================================
+   Vector MAX: Dedicated Engine Tabs, Section, and Turbo Studio Controls
+   ========================================================================== */
+
+/* Hero Mode Switcher Tabs */
+.engine-mode-tabs {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  width: 100%;
+}
+
+.engine-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--fv-radius-md);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  color: #94a3b8;
+  position: relative;
+}
+
+.engine-tab-btn:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.engine-tab-btn.active {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.2) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.25);
+}
+
+.engine-tab-btn.tab-max.active {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.22) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border-color: #f97316;
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.3);
+}
+
+.engine-tab-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.engine-tab-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.engine-tab-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.engine-tab-sub {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.engine-tab-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  text-transform: uppercase;
+}
+
+.engine-tab-pill.pill-max {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border-color: rgba(249, 115, 22, 0.4);
+}
+
+/* Studio: Vector MAX Turbo Re-Trace Card */
+.vm-turbo-max-card {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  border-radius: 12px;
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15);
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+}
+
+.vm-turbo-max-card:hover {
+  border-color: #fb923c;
+  box-shadow: 0 12px 30px rgba(249, 115, 22, 0.25);
+}
+
+.vm-turbo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vm-turbo-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.vm-turbo-flame {
+  font-size: 1.15rem;
+  filter: drop-shadow(0 0 6px #f97316);
+}
+
+.vm-turbo-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.5);
+  text-transform: uppercase;
+}
+
+.vm-turbo-desc {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.btn-vector-max-upgrade {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #f97316;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.84rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
+  text-align: left;
+}
+
+.btn-vector-max-upgrade:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.6);
+}
+
+.btn-max-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.btn-max-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-max-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.btn-max-sub {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.btn-max-pill {
+  font-size: 0.68rem;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+/* Dedicated Vector MAX Section on Homepage */
+.vector-max-section {
+  padding: 4.5rem 1.5rem;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.vmax-section-card {
+  background: linear-gradient(180deg, rgba(30, 20, 15, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 20px;
+  padding: 3rem 2.5rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.vmax-section-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f97316, #fb923c, #f59e0b, #f97316);
+}
+
+.vmax-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .vmax-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vmax-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  color: #fb923c;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+
+.vmax-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+.vmax-title span {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.vmax-desc {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 1.75rem;
+}
+
+/* Dedicated Vector MAX Separate Upload Dropzone */
+.vmax-drop-zone {
+  border: 2px dashed rgba(249, 115, 22, 0.45);
+  background: rgba(249, 115, 22, 0.04);
+  border-radius: 14px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.vmax-drop-zone:hover,
+.vmax-drop-zone.dragover {
+  border-color: #fb923c;
+  background: rgba(249, 115, 22, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(249, 115, 22, 0.2);
+}
+
+.btn-vmax-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.75rem;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
+  transition: all 0.2s;
+}
+
+.btn-vmax-upload:hover {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  transform: scale(1.02);
+}
+
+.vmax-sample-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: 12px;
+  padding: 0.85rem 1.15rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+}
+
+.vmax-sample-card:hover {
+  border-color: #fb923c;
+  background: rgba(249, 115, 22, 0.12);
+  transform: translateX(4px);
+}
+
+.vmax-sample-img {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 
 

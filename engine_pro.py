@@ -523,10 +523,15 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     u_colors = analysis["unique_colors"]
 
     preset = options.get('preset', 'auto')
+    is_vector_max = bool(preset == 'vector_max' or options.get('mode') == 'vector_max' or preset in ('max', 'ultra', 'detailed_photo'))
     is_mono = is_monochrome_image(orig_img)
-    is_line_art = (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color')) or preset in ('cut_vinyl', 'silhouette', 'line_art')
+    is_line_art = (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color', 'vector_max')) or preset in ('cut_vinyl', 'silhouette', 'line_art')
 
-    if preset in ('logo', 'clipart', 'badge', 'cut_vinyl', 'icon', 'graphic'):
+    if is_vector_max:
+        is_logo = False
+        classification = "Vector MAX™ (Ultra-Detail Photography & Fine Art)"
+        analysis["classification"] = classification
+    elif preset in ('logo', 'clipart', 'badge', 'cut_vinyl', 'icon', 'graphic'):
         is_logo = True
         if u_colors > 1000 or preset in ('clipart', 'graphic'):
             classification = "Gradient Mascot & Graphic"
@@ -543,7 +548,13 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     is_gradient_graphic = (is_logo and (classification == "Gradient Mascot & Graphic" or u_colors > 1000 or (analysis.get("flat_ratio", 0) > 65.0 and u_colors > 650)))
 
     # Resolution Scaling:
-    if is_logo:
+    if is_vector_max:
+        # Vector MAX 2.0x Lanczos scaling to capture all micro-contours without exceeding memory
+        scale = min(2.5, 1400.0 / max_dim) if max_dim < 1000 else (1600.0 / max_dim if max_dim > 1600 else 1.0)
+        tw = int(round(orig_w * scale))
+        th = int(round(orig_h * scale))
+        work_img = orig_img.resize((tw, th), Image.Resampling.LANCZOS)
+    elif is_logo:
         if is_gradient_graphic:
             # Gradient Mascot / Illustration Pipeline:
             # 2.5x Lanczos upsampling converts discrete pixel steps into silky continuous sub-pixel splines
@@ -659,8 +670,20 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
     # Vector Magic Sub-Pixel Boundary Regularization:
     # Transforms discrete pixel staircase noise into silky continuous Bézier splines
-    use_vm_regularization = bool(is_logo or len(palette_rgb) <= 24 or preset in ('auto', 'logo', 'clipart', 'badge'))
-    if use_vm_regularization:
+    use_vm_regularization = bool(not is_vector_max and (is_logo or len(palette_rgb) <= 24 or preset in ('auto', 'logo', 'clipart', 'badge')))
+    if is_vector_max:
+        # Vector MAX: Ultra-Fine Art & Photography micro-spline tracing
+        smooth_bgr = cv2.bilateralFilter(bgr, 5, 28, 22)
+        filter_speckle = int(options.get('filter_speckle', 4))
+        color_precision = int(options.get('color_precision', 6))
+        layer_difference = int(options.get('layer_difference', 16))
+        corner_threshold = int(options.get('corner_threshold', 68))
+        length_threshold = float(options.get('length_threshold', 3.8))
+        max_iterations = int(options.get('max_iterations', 35))
+        splice_threshold = int(options.get('splice_threshold', 55))
+        path_precision = int(options.get('path_precision', 2))
+        clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
+    elif use_vm_regularization:
         K = len(palette_rgb)
         pixels = arr.astype(np.float32)
         palette_f = palette_rgb.astype(np.float32)
@@ -743,19 +766,20 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             except Exception: pass
 
     # VECTOR MAGIC PALETTE SNAPPING:
-    # Snap all path fill colors to the nearest true palette center
-    palette_rgb_f = palette_rgb.astype(np.float32)
+    # Snap all path fill colors to the nearest true palette center (for clean logos & graphics)
+    if not is_vector_max:
+        palette_rgb_f = palette_rgb.astype(np.float32)
 
-    def snap_color_fn(match):
-        c_str = match.group(1).upper()
-        if c_str.startswith('#') and len(c_str) == 7:
-            c_rgb = np.array(hex2rgb(c_str), dtype=np.float32)
-            dists = np.sum((palette_rgb_f - c_rgb)**2, axis=1)
-            best_idx = np.argmin(dists)
-            return f'fill="{palette_hex[best_idx]}"'
-        return match.group(0)
+        def snap_color_fn(match):
+            c_str = match.group(1).upper()
+            if c_str.startswith('#') and len(c_str) == 7:
+                c_rgb = np.array(hex2rgb(c_str), dtype=np.float32)
+                dists = np.sum((palette_rgb_f - c_rgb)**2, axis=1)
+                best_idx = np.argmin(dists)
+                return f'fill="{palette_hex[best_idx]}"'
+            return match.group(0)
 
-    svg_content = re.sub(r'fill="([^"]+)"', snap_color_fn, svg_content)
+        svg_content = re.sub(r'fill="([^"]+)"', snap_color_fn, svg_content)
 
     # Clean background stripping when transparent_bg is requested or input had native alpha:
     should_strip_bg = bool(transparent_bg or has_native_alpha or options.get('remove_bg', False))
@@ -783,21 +807,31 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     total_paths = sum(color_counts.values()) or 1
 
     palette_data = []
-    for p_hex in palette_hex:
-        cnt = color_counts.get(p_hex, 0)
-        if cnt > 0:
-            palette_data.append({
-                'hex': p_hex,
-                'count': cnt,
-                'percentage': round((cnt / total_paths) * 100, 1)
-            })
-    for c, cnt in color_counts.items():
-        if c not in palette_hex:
+    if is_vector_max:
+        # For Vector MAX, sort by most prominent colors in the vector graphic
+        sorted_by_freq = sorted(color_counts.items(), key=lambda x: -x[1])
+        for c, cnt in sorted_by_freq[:32]:
             palette_data.append({
                 'hex': c,
                 'count': cnt,
                 'percentage': round((cnt / total_paths) * 100, 1)
             })
+    else:
+        for p_hex in palette_hex:
+            cnt = color_counts.get(p_hex, 0)
+            if cnt > 0:
+                palette_data.append({
+                    'hex': p_hex,
+                    'count': cnt,
+                    'percentage': round((cnt / total_paths) * 100, 1)
+                })
+        for c, cnt in color_counts.items():
+            if c not in palette_hex:
+                palette_data.append({
+                    'hex': c,
+                    'count': cnt,
+                    'percentage': round((cnt / total_paths) * 100, 1)
+                })
 
     with open(output_svg_path, 'w', encoding='utf-8') as f:
         f.write(svg_content)

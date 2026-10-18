@@ -109,6 +109,22 @@
         splice_threshold: 52,
         max_iterations: 28,
         clean_checkerboard: false
+      },
+      vector_max: {
+        name: 'Vector MAX™ (Ultra-High Detail Art & Photography)',
+        description: 'Ultra-fine 3,000+ micro-spline tracing with full gradient depth for complex artworks, feathers, and detailed photos.',
+        preset: 'vector_max',
+        mode: 'vector_max',
+        colors_limit: 0,
+        denoise_level: 'low',
+        super_sampling: 1,
+        filter_speckle: 4,
+        corner_threshold: 68,
+        length_threshold: 3.8,
+        layer_difference: 16,
+        splice_threshold: 55,
+        max_iterations: 35,
+        clean_checkerboard: false
       }
     };
 
