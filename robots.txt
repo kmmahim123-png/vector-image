@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://freevectorimage.io/sitemap.xml
+Sitemap: https://vector-image-kappa.vercel.app/sitemap.xml

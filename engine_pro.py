@@ -476,12 +476,21 @@ def extract_advanced_palette(arr, target_colors=0):
     for c, cnt in sorted(zip(centers, counts), key=lambda x: -x[1]):
         merged = False
         lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+        c_hsv = cv2.cvtColor(np.uint8([[c]]), cv2.COLOR_RGB2HSV)[0][0]
+
         for i, (mc, mcnt) in enumerate(zip(merged_centers, merged_counts)):
             m_lum = 0.299 * mc[0] + 0.587 * mc[1] + 0.114 * mc[2]
+            mc_hsv = cv2.cvtColor(np.uint8([[mc]]), cv2.COLOR_RGB2HSV)[0][0]
             dist = np.linalg.norm(c - mc)
             is_near_black = (lum < 50 and m_lum < 50 and dist < 55.0)
             is_near_white = (lum > 235 and m_lum > 235 and dist < 45.0)
-            if dist < 28.0 or is_near_black or is_near_white:
+
+            # Hue-aware anti-aliasing edge halo merging (e.g. dark red compression halo on red logo)
+            h_diff = abs(int(c_hsv[0]) - int(mc_hsv[0]))
+            if h_diff > 90: h_diff = 180 - h_diff
+            is_same_hue_shadow = (h_diff <= 14 and c_hsv[1] > 35 and mc_hsv[1] > 35 and dist < 110.0 and mcnt > 2.0 * cnt)
+
+            if dist < 28.0 or is_near_black or is_near_white or is_same_hue_shadow:
                 new_cnt = mcnt + cnt
                 merged_centers[i] = (mc * mcnt + c * cnt) / new_cnt
                 merged_counts[i] = new_cnt
@@ -492,10 +501,22 @@ def extract_advanced_palette(arr, target_colors=0):
             merged_counts.append(cnt)
 
     total = sum(merged_counts) or 1
-    # Filter out spurious edge-bleed remnants (< 0.2% of flat region)
-    clean = [(c, cnt) for c, cnt in zip(merged_centers, merged_counts) if (cnt / total) >= 0.002]
-    if len(clean) < 2:
-        clean = list(zip(merged_centers[:2], merged_counts[:2]))
+
+    # Intelligent Brand Logo Dominance Filtering:
+    # If top 2 colors account for >= 90% of flat pixels, it is a pure 2-color brand logo (e.g. Coca-Cola Red+White)
+    sorted_pairs = sorted(zip(merged_centers, merged_counts), key=lambda x: -x[1])
+    if len(sorted_pairs) >= 2:
+        top2_ratio = (sorted_pairs[0][1] + sorted_pairs[1][1]) / total
+        if top2_ratio >= 0.90:
+            clean = sorted_pairs[:2]
+        elif len(sorted_pairs) >= 3 and ((sorted_pairs[0][1] + sorted_pairs[1][1] + sorted_pairs[2][1]) / total) >= 0.94:
+            clean = sorted_pairs[:3]
+        else:
+            clean = [(c, cnt) for c, cnt in sorted_pairs if (cnt / total) >= 0.005]
+            if len(clean) < 2:
+                clean = sorted_pairs[:2]
+    else:
+        clean = sorted_pairs
 
     clean_rgb = np.uint8(np.round([c for c, _ in clean]))
     return clean_rgb
@@ -697,10 +718,11 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         inv_dists = np.exp(-dists / 28.0)
         probs = inv_dists / np.sum(inv_dists, axis=-1, keepdims=True)
 
-        # Stroke continuity preservation (bridge sub-pixel micro-gaps in dark outlines)
+        # Stroke continuity preservation (bridge sub-pixel micro-gaps ONLY in genuine dark ink outlines)
         lums = [0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] for c in palette_rgb]
         dark_idx = int(np.argmin(lums))
-        if lums[dark_idx] < 70:
+        is_true_dark_outline = bool(np.max(palette_rgb[dark_idx]) < 55 and lums[dark_idx] < 45 and (analysis.get("is_logo", False) or is_illustration))
+        if is_true_dark_outline:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
             probs[:, :, dark_idx] = cv2.morphologyEx(probs[:, :, dark_idx], cv2.MORPH_CLOSE, kernel)
 
@@ -718,20 +740,31 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             filter_speckle = int(options.get('filter_speckle', 4))
             max_iterations = int(options.get('max_iterations', 60))
         else: # high (default) - needle-sharp corner vertices with silky continuous curves
-            sigma_base = 1.3
+            sigma_base = 1.2
             corner_threshold = int(options.get('corner_threshold', 82))
             length_threshold = float(options.get('length_threshold', 2.8))
             filter_speckle = int(options.get('filter_speckle', 3))
             max_iterations = int(options.get('max_iterations', 65))
 
         for k in range(K):
-            s_k = sigma_base * 0.85 if k == dark_idx else sigma_base
+            s_k = sigma_base * 0.85 if (is_true_dark_outline and k == dark_idx) else sigma_base
             probs[:, :, k] = cv2.GaussianBlur(probs[:, :, k], (0, 0), s_k)
 
-        if lums[dark_idx] < 70:
+        if is_true_dark_outline:
             probs[:, :, dark_idx] *= 1.25
 
+        # High-curvature & fine-detail preservation:
+        # Don't let blur override sharp text or acute corners
+        sharp_labels = np.argmin(dists, axis=-1)
+        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+        sobelx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+        sobely = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+        grad_mag = np.sqrt(sobelx**2 + sobely**2)
+        sharp_mask = grad_mag > 115.0
+
         labels = np.argmax(probs, axis=-1)
+        labels[sharp_mask] = sharp_labels[sharp_mask]
+
         clean_rgb = palette_rgb[labels].astype(np.uint8)
         color_precision = int(options.get('color_precision', 8))
         layer_difference = int(options.get('layer_difference', 16))
@@ -739,13 +772,13 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         path_precision = int(options.get('path_precision', 3))
     else:
         # Photographic / complex artwork raster path
-        smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 28)
-        filter_speckle = int(options.get('filter_speckle', 4))
+        smooth_bgr = cv2.bilateralFilter(bgr, 5, 20, 18)
+        filter_speckle = int(options.get('filter_speckle', 3))
         color_precision = int(options.get('color_precision', 8))
-        layer_difference = int(options.get('layer_difference', 16))
-        corner_threshold = int(options.get('corner_threshold', 65))
-        length_threshold = float(options.get('length_threshold', 3.8))
-        max_iterations = int(options.get('max_iterations', 40))
+        layer_difference = int(options.get('layer_difference', 14))
+        corner_threshold = int(options.get('corner_threshold', 68))
+        length_threshold = float(options.get('length_threshold', 3.0))
+        max_iterations = int(options.get('max_iterations', 45))
         splice_threshold = int(options.get('splice_threshold', 52))
         path_precision = int(options.get('path_precision', 3))
         clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)

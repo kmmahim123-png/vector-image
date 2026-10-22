@@ -451,6 +451,17 @@
     const vmSwatchesRow = document.getElementById('vm-swatches-card-row');
     if (vmSwatchesRow) vmSwatchesRow.innerHTML = '';
 
+    // Synchronize active color limit pill
+    const pillBtns = document.querySelectorAll('.vm-pill-color');
+    pillBtns.forEach((btn) => {
+      const k = parseInt(btn.dataset.k, 10) || 0;
+      if (k === (state.colorsLimit || 0)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
     palette.forEach((item) => {
       // Also render into right panel Vector Magic card
       if (vmSwatchesRow) {
@@ -811,15 +822,28 @@
       DOM.canvasContainer.classList.remove('panning');
     });
 
-    // 1-Click Transparent vs Studio White Canvas Toggle Button
+    // 1-Click Transparent vs Studio Slate Canvas Toggle Button
     const btnToggleBg = document.getElementById('btn-toggle-bg-canvas');
     if (btnToggleBg) {
       btnToggleBg.addEventListener('click', () => {
         state.transparentBg = !state.transparentBg;
         btnToggleBg.classList.toggle('active', state.transparentBg);
-        btnToggleBg.innerHTML = state.transparentBg ? '☀️ Studio White BG' : '🏁 Transparent Canvas';
+        btnToggleBg.innerHTML = state.transparentBg ? '☀️ Studio Slate BG' : '🏁 Transparent Canvas';
         if (DOM.canvasContainer) {
-          DOM.canvasContainer.classList.toggle('studio-white', !state.transparentBg);
+          DOM.canvasContainer.classList.toggle('checkerboard', state.transparentBg);
+          DOM.canvasContainer.classList.toggle('transparent-mode', state.transparentBg);
+        }
+      });
+    }
+
+    // Top-Level Instant Quick Download SVG Button
+    const btnTopQuickSvg = document.getElementById('btn-top-quick-svg');
+    if (btnTopQuickSvg) {
+      btnTopQuickSvg.addEventListener('click', () => {
+        if (DOM.dlVectorStd) {
+          DOM.dlVectorStd.click();
+        } else {
+          downloadFile('svg');
         }
       });
     }
@@ -1181,34 +1205,13 @@
       });
     });
 
-    // Colors Mode: Auto / Unlimited vs Custom Palette
-    const colorModeBtns = document.querySelectorAll('#vm-color-mode-group .vm-toggle-btn');
-    const pillsRow = document.getElementById('vm-color-pills-row');
-    colorModeBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        colorModeBtns.forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        const mode = btn.dataset.colormode;
-        if (mode === 'custom') {
-          if (pillsRow) pillsRow.style.display = 'flex';
-          if (state.colorsLimit === 0) state.colorsLimit = 8;
-        } else {
-          if (pillsRow) pillsRow.style.display = 'none';
-          state.colorsLimit = 0;
-          if (state.originalImage) {
-            processImageSource(state.originalImage.src, state.fileName);
-          }
-        }
-      });
-    });
-
-    // Quick Palette Limit Pills (2, 4, 6, 8, 12, 16, 24)
+    // Quick Palette Limit Pills (Auto, 2, 3, 4, 6, 8, 12, 16, 24)
     const pillBtns = document.querySelectorAll('.vm-pill-color');
     pillBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
         pillBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
-        state.colorsLimit = parseInt(btn.dataset.k, 10);
+        state.colorsLimit = parseInt(btn.dataset.k, 10) || 0;
         if (state.originalImage) {
           processImageSource(state.originalImage.src, state.fileName);
         }
@@ -1279,7 +1282,7 @@
           statusBadge.style.color = '#34d399';
           statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.5)';
         }
-        if (statusDesc) statusDesc.textContent = 'Rendering with 3,000+ to 5,000+ micro-splines and continuous color fidelity.';
+        if (statusDesc) statusDesc.textContent = 'Rendering with 11,000+ razor-sharp micro-splines and continuous color fidelity.';
         actionTitle.textContent = 'Switch to Vector Magic (Clean Logo Mode)';
         if (actionSub) actionSub.textContent = 'Silky continuous splines & discrete brand colors';
         if (actionPill) actionPill.textContent = 'STANDARD';
@@ -1293,7 +1296,7 @@
         }
         if (statusDesc) statusDesc.textContent = 'Not satisfied with smooth logo curves? Unlock Vector MAX for complex artworks, paintings, and fine feathers:';
         actionTitle.textContent = 'Re-Vectorize with Vector MAX';
-        if (actionSub) actionSub.textContent = 'Unlock 3,000+ to 5,000+ micro-splines & deep gradients';
+        if (actionSub) actionSub.textContent = 'Unlock 11,000+ razor-sharp micro-splines & deep gradients';
         if (actionPill) actionPill.textContent = 'UPGRADE';
       }
     }
