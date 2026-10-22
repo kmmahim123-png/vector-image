@@ -482,8 +482,8 @@ def extract_advanced_palette(arr, target_colors=0):
             m_lum = 0.299 * mc[0] + 0.587 * mc[1] + 0.114 * mc[2]
             mc_hsv = cv2.cvtColor(np.uint8([[mc]]), cv2.COLOR_RGB2HSV)[0][0]
             dist = np.linalg.norm(c - mc)
-            is_near_black = (lum < 50 and m_lum < 50 and dist < 55.0)
-            is_near_white = (lum > 235 and m_lum > 235 and dist < 45.0)
+            is_near_black = (lum < 40 and m_lum < 40 and dist < 32.0 and abs(int(c_hsv[1]) - int(mc_hsv[1])) < 20)
+            is_near_white = (lum > 235 and m_lum > 235 and dist < 38.0)
 
             # Hue-aware anti-aliasing edge halo merging (e.g. dark red compression halo on red logo)
             h_diff = abs(int(c_hsv[0]) - int(mc_hsv[0]))
@@ -502,20 +502,13 @@ def extract_advanced_palette(arr, target_colors=0):
 
     total = sum(merged_counts) or 1
 
-    # Intelligent Brand Logo Dominance Filtering:
-    # If top 2 colors account for >= 90% of flat pixels, it is a pure 2-color brand logo (e.g. Coca-Cola Red+White)
+    # Accurate Vector Magic Color Preservation:
+    # Keeps all authentic logo colors (petals, text, gradients, accents) while filtering sub-pixel JPEG noise (<0.25%)
     sorted_pairs = sorted(zip(merged_centers, merged_counts), key=lambda x: -x[1])
-    if len(sorted_pairs) >= 2:
-        top2_ratio = (sorted_pairs[0][1] + sorted_pairs[1][1]) / total
-        if top2_ratio >= 0.90:
-            clean = sorted_pairs[:2]
-        elif len(sorted_pairs) >= 3 and ((sorted_pairs[0][1] + sorted_pairs[1][1] + sorted_pairs[2][1]) / total) >= 0.94:
-            clean = sorted_pairs[:3]
-        else:
-            clean = [(c, cnt) for c, cnt in sorted_pairs if (cnt / total) >= 0.005]
-            if len(clean) < 2:
-                clean = sorted_pairs[:2]
-    else:
+    clean = [(c, cnt) for c, cnt in sorted_pairs if (cnt / total) >= 0.0025]
+    if len(clean) < 2 and len(sorted_pairs) >= 2:
+        clean = sorted_pairs[:2]
+    elif len(clean) == 0:
         clean = sorted_pairs
 
     clean_rgb = np.uint8(np.round([c for c, _ in clean]))
@@ -543,7 +536,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     analysis = analyze_image_dual_track(orig_img)
     u_colors = analysis["unique_colors"]
 
-    preset = options.get('preset', 'auto')
+    preset = str(options.get('preset') or options.get('presetKey') or options.get('mode') or 'auto').lower()
     is_vector_max = bool(preset == 'vector_max' or options.get('mode') == 'vector_max' or preset in ('max', 'ultra', 'detailed_photo'))
     is_mono = is_monochrome_image(orig_img)
     is_line_art = bool(preset in ('cut_vinyl', 'silhouette', 'line_art'))
@@ -696,6 +689,23 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         # Vector MAX: Ultra-Fine Art & Photography micro-spline tracing with unsharp contrast pre-enhancement
         blur_bgr = cv2.GaussianBlur(bgr, (0, 0), 1.0)
         sharp_bgr = np.clip(cv2.addWeighted(bgr.astype(np.float32), 1.35, blur_bgr.astype(np.float32), -0.35, 0), 0, 255).astype(np.uint8)
+
+        # Clean Studio Background Locking for Vector MAX:
+        # Prevents flat studio/card backgrounds from fracturing into dozens of micro-tiles or creating halos
+        h_s, w_s = sharp_bgr.shape[:2]
+        corners = [(0, 0), (w_s - 1, 0), (0, h_s - 1), (w_s - 1, h_s - 1)]
+        corner_samples = np.array([sharp_bgr[cy, cx] for cx, cy in corners], dtype=np.float32)
+        corner_std = np.std(corner_samples, axis=0)
+        if np.max(corner_std) < 22.0:
+            bg_bgr_val = np.median(corner_samples, axis=0)
+            ff_mask = np.zeros((h_s + 2, w_s + 2), np.uint8)
+            diff = (18, 18, 18)
+            for cx, cy in corners:
+                if np.linalg.norm(sharp_bgr[cy, cx].astype(np.float32) - bg_bgr_val) < 28.0:
+                    cv2.floodFill(sharp_bgr, ff_mask, (cx, cy), (int(bg_bgr_val[0]), int(bg_bgr_val[1]), int(bg_bgr_val[2])), diff, diff, cv2.FLOODFILL_FIXED_RANGE)
+            bg_pix = (ff_mask[1:-1, 1:-1] == 1)
+            sharp_bgr[bg_pix] = np.round(bg_bgr_val).astype(np.uint8)
+
         filter_speckle = int(options.get('filter_speckle', 2))
         color_precision = int(options.get('color_precision', 8))
         layer_difference = int(options.get('layer_difference', 12))
@@ -825,7 +835,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         # 1. Remove background rect if present
         svg_content = re.sub(r'<rect\b[^>]*id="studio-bg-rect"[^>]*\/?>', '', svg_content, flags=re.IGNORECASE)
 
-        # 2. In stacked mode, the first path is always the canvas base layer
+        # 2. In stacked mode, remove background base layer if its color matches the border background
         first_path = re.search(r'<path\b[^>]*\bfill="([^"]+)"[^>]*\/?>', svg_content, re.IGNORECASE)
         if first_path:
             fill_c = first_path.group(1).upper()
@@ -835,9 +845,25 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             else:
                 dist_bg = 0.0
 
-            # If the first path matches the border background, or if user explicitly requested transparency:
-            if dist_bg < 75.0 or transparent_bg or has_native_alpha:
+            # Only strip the base layer if it genuinely matches the sampled border background color
+            if dist_bg < 45.0:
                 svg_content = svg_content[:first_path.start()] + svg_content[first_path.end():]
+
+        # For Vector MAX or multi-layer backgrounds, strip any remaining paths that match background color
+        def strip_bg_filter(match):
+            path_str = match.group(0)
+            fill_m = re.search(r'fill="([^"]+)"', path_str, re.IGNORECASE)
+            if not fill_m:
+                return path_str
+            fill_val = fill_m.group(1).upper()
+            if fill_val.startswith('#') and len(fill_val) == 7:
+                c_rgb = np.array(hex2rgb(fill_val), dtype=np.float32)
+                if np.linalg.norm(c_rgb - bg_rgb) < 32.0:
+                    return ''
+            return path_str
+
+        if is_vector_max or options.get('remove_bg', False) or transparent_bg or has_native_alpha:
+            svg_content = re.sub(r'<path\b[^>]*\/?>', strip_bg_filter, svg_content)
 
     svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="{tw}" height="{th}" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
     svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)

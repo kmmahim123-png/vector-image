@@ -266,7 +266,9 @@
       // Vectorize via Enterprise AI engine
       const { svg, stats, palette, verification } = await engine.vectorize(
         {
+          preset: state.currentPreset,
           presetKey: state.currentPreset,
+          mode: state.currentPreset,
           colors_limit: state.colorsLimit,
           detail_level: state.detailLevel,
           denoise_level: state.denoiseLevel,
@@ -281,6 +283,7 @@
         }
       );
 
+      state.rawSvgBeforeBgRemoval = null;
       state.svgString = svg;
       state.stats = stats;
       state.palette = palette || [];
@@ -725,13 +728,18 @@
     }
   }
 
+  let splitRaf = null;
   function setSplitPosition(pos) {
     state.splitPos = Math.max(0, Math.min(100, pos));
-    DOM.splitDivider.style.left = `${state.splitPos}%`;
-    const vectorPane = document.getElementById('pane-vector');
-    if (vectorPane) {
-      vectorPane.style.clipPath = `polygon(${state.splitPos}% 0, 100% 0, 100% 100%, ${state.splitPos}% 100%)`;
-    }
+    if (splitRaf) return;
+    splitRaf = requestAnimationFrame(() => {
+      DOM.splitDivider.style.left = `${state.splitPos}%`;
+      const vectorPane = document.getElementById('pane-vector');
+      if (vectorPane) {
+        vectorPane.style.clipPath = `polygon(${state.splitPos}% 0, 100% 0, 100% 100%, ${state.splitPos}% 100%)`;
+      }
+      splitRaf = null;
+    });
   }
 
   /**
@@ -907,11 +915,16 @@
     });
   }
 
+  let transformRaf = null;
   function applyTransform() {
-    const stage = document.getElementById('viewer-stage');
-    if (stage) {
-      stage.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
-    }
+    if (transformRaf) return;
+    transformRaf = requestAnimationFrame(() => {
+      const stage = document.getElementById('viewer-stage');
+      if (stage) {
+        stage.style.transform = `translate3d(${state.pan.x}px, ${state.pan.y}px, 0) scale(${state.zoom})`;
+      }
+      transformRaf = null;
+    });
   }
 
   /**
@@ -1230,7 +1243,29 @@
 
         if (state.svgString) {
           if (state.transparentBg) {
-            state.svgString = state.svgString.replace(/<rect id="studio-bg-rect"[^>]*\/>/i, '');
+            if (!state.rawSvgBeforeBgRemoval) {
+              state.rawSvgBeforeBgRemoval = state.svgString;
+            }
+            let updatedSvg = state.svgString.replace(/<rect id="studio-bg-rect"[^>]*\/>/gi, '');
+            const firstPathMatch = updatedSvg.match(/<path\b[^>]*\bfill="([^"]+)"[^>]*\/?>/i);
+            if (firstPathMatch) {
+              const bgHex = firstPathMatch[1];
+              if (bgHex && bgHex.toLowerCase() !== 'none' && bgHex.toLowerCase() !== 'transparent') {
+                updatedSvg = engine.recolorClient({ [bgHex]: 'transparent' });
+              }
+            }
+            state.svgString = updatedSvg;
+            if (DOM.canvasContainer) {
+              DOM.canvasContainer.classList.add('checkerboard', 'transparent-mode');
+            }
+          } else {
+            if (state.rawSvgBeforeBgRemoval) {
+              state.svgString = state.rawSvgBeforeBgRemoval;
+              state.rawSvgBeforeBgRemoval = null;
+            }
+            if (DOM.canvasContainer) {
+              DOM.canvasContainer.classList.remove('checkerboard', 'transparent-mode');
+            }
           }
           renderVectorPreview();
         }

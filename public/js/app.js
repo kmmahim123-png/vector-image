@@ -29,12 +29,13 @@
     transparentBg: false,
     denoiseLevel: 'low',
     colorsLimit: 0,
+    detailLevel: 'high',
     options: {
-      filter_speckle: 8,
-      corner_threshold: 75,
-      length_threshold: 7.0,
+      filter_speckle: 4,
+      corner_threshold: 50,
+      length_threshold: 10.0,
       splice_threshold: 55,
-      max_iterations: 30
+      max_iterations: 50
     }
   };
 
@@ -99,8 +100,14 @@
     setupViewerControls();
     setupDownloadButtons();
     setupEditControls();
+    setupVectorMagicStudioControls();
     setupHeroSlider();
+    setupVectorMagicGallerySliders();
+    setupWizardBar();
     setupClipboardPaste();
+    setupColorActionModal();
+    setupEngineModeTabs();
+    setupVectorMaxSectionUpload();
 
     window.addEventListener('resize', () => {
       if (state.screen === 'result') {
@@ -114,12 +121,15 @@
       const birdSample = window.SampleGenerator.createBirdSample();
       const logoSample = window.SampleGenerator.createLogoSample();
       const mandalaSample = window.SampleGenerator.createMandalaSample();
+      const owlSample = window.SampleGenerator.createOwlSample();
 
+      const imgOwl = document.getElementById('sample-img-owl');
       const img1 = document.getElementById('sample-img-waterfall');
       const img2 = document.getElementById('sample-img-bird');
       const img3 = document.getElementById('sample-img-logo');
       const img4 = document.getElementById('sample-img-mandala');
 
+      if (imgOwl) imgOwl.src = owlSample;
       if (img1) img1.src = waterfallSample;
       if (img2) img2.src = birdSample;
       if (img3) img3.src = logoSample;
@@ -201,7 +211,12 @@
         let sampleName = 'vector-sample.png';
         let suggestedPreset = 'logo';
 
-        if (sampleType === 'waterfall') {
+        if (sampleType === 'owl') {
+          dataUrl = window.SampleGenerator.createOwlSample();
+          sampleName = 'Rainbow_Owl_Vector_MAX.png';
+          suggestedPreset = 'vector_max';
+          state.colorsLimit = 0;
+        } else if (sampleType === 'waterfall') {
           dataUrl = window.SampleGenerator.createWaterfallSample();
           sampleName = 'Waterfall_Landscape.png';
           suggestedPreset = 'illustration';
@@ -251,11 +266,14 @@
       // Vectorize via Enterprise AI engine
       const { svg, stats, palette, verification } = await engine.vectorize(
         {
+          preset: state.currentPreset,
           presetKey: state.currentPreset,
+          mode: state.currentPreset,
           colors_limit: state.colorsLimit,
+          detail_level: state.detailLevel,
           denoise_level: state.denoiseLevel,
           clean_checkerboard: state.cleanCheckerboard,
-          transparent_bg: false,
+          transparent_bg: state.transparentBg,
           ...state.options
         },
         (progress) => {
@@ -265,6 +283,7 @@
         }
       );
 
+      state.rawSvgBeforeBgRemoval = null;
       state.svgString = svg;
       state.stats = stats;
       state.palette = palette || [];
@@ -274,6 +293,7 @@
       renderVectorPreview();
       updateStatsUI();
       renderPaletteBar(state.palette);
+      updateVectorMaxStudioUI();
       resetZoomAndPan();
 
       showScreen('result');
@@ -293,6 +313,7 @@
         renderVectorPreview();
         updateStatsUI();
         renderPaletteBar(state.palette);
+        updateVectorMaxStudioUI();
         resetZoomAndPan();
         showScreen('result');
       } catch (finalErr) {
@@ -306,11 +327,15 @@
   function updatePresetBadge() {
     const p = window.VectorEngine.Presets[state.currentPreset];
     if (p && DOM.presetBadge) {
-      const v = state.verification;
-      if (v && v.classification && state.currentPreset === 'auto') {
-        DOM.presetBadge.textContent = `🎯 Auto Precision: ${v.classification}`;
+      if (state.currentPreset === 'vector_max') {
+        DOM.presetBadge.textContent = '🔥 Vector MAX (Ultra-Detail)';
       } else {
-        DOM.presetBadge.textContent = `✨ ${p.name}`;
+        const v = state.verification;
+        if (v && v.classification && state.currentPreset === 'auto') {
+          DOM.presetBadge.textContent = `🎯 Auto Precision: ${v.classification}`;
+        } else {
+          DOM.presetBadge.textContent = `✨ ${p.name}`;
+        }
       }
     }
   }
@@ -426,21 +451,59 @@
     DOM.studioPaletteBar.style.display = 'block';
     if (DOM.paletteCountBadge) DOM.paletteCountBadge.textContent = palette.length;
 
+    const vmSwatchesRow = document.getElementById('vm-swatches-card-row');
+    if (vmSwatchesRow) vmSwatchesRow.innerHTML = '';
+
+    // Synchronize active color limit pill
+    const pillBtns = document.querySelectorAll('.vm-pill-color');
+    pillBtns.forEach((btn) => {
+      const k = parseInt(btn.dataset.k, 10) || 0;
+      if (k === (state.colorsLimit || 0)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
     palette.forEach((item) => {
+      // Also render into right panel Vector Magic card
+      if (vmSwatchesRow) {
+        const cardSwatch = document.createElement('div');
+        cardSwatch.className = 'vm-card-swatch';
+        cardSwatch.style.backgroundColor = item.hex;
+        cardSwatch.title = `${item.hex} (${item.percentage}%) • Click to Merge / Recolor`;
+
+        cardSwatch.addEventListener('mouseenter', () => {
+          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
+          paths.forEach((p) => { p.style.filter = 'drop-shadow(0 0 6px #06b6d4)'; });
+        });
+        cardSwatch.addEventListener('mouseleave', () => {
+          const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
+          paths.forEach((p) => { p.style.filter = 'none'; });
+        });
+
+        cardSwatch.addEventListener('click', () => {
+          openColorActionModal(item.hex);
+        });
+
+        vmSwatchesRow.appendChild(cardSwatch);
+      }
+
       const pill = document.createElement('div');
       pill.className = 'swatch-pill';
       pill.dataset.hex = item.hex;
+      pill.title = `${item.hex} (${item.percentage}%) • Click to Merge / Recolor`;
 
       pill.innerHTML = `
         <div class="swatch-color-box" style="background-color: ${item.hex};"></div>
         <span class="swatch-hex">${item.hex}</span>
         <span class="swatch-pct">${item.percentage}%</span>
-        <button class="swatch-btn-remove" title="Make Transparent (Remove Background)">✕</button>
+        <button class="swatch-btn-remove" title="Make Transparent (Remove Color)">✕</button>
       `;
 
       // Hover to highlight matching paths
       pill.addEventListener('mouseenter', () => {
-        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
         paths.forEach((p) => {
           p.dataset.origOpacity = p.style.opacity || '1';
           p.style.filter = 'drop-shadow(0 0 6px #06b6d4)';
@@ -448,7 +511,7 @@
       });
 
       pill.addEventListener('mouseleave', () => {
-        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}"]`);
+        const paths = DOM.vectorSvgContainer.querySelectorAll(`path[fill="${item.hex}" i], path[fill="${item.hex.toLowerCase()}"], path[fill="${item.hex.toUpperCase()}"]`);
         paths.forEach((p) => {
           p.style.filter = 'none';
         });
@@ -460,37 +523,180 @@
         e.stopPropagation();
         state.svgString = engine.recolorClient({ [item.hex]: 'transparent' });
         renderVectorPreview();
-        pill.remove();
-        if (state.stats) {
-          state.stats.pathsCount = Math.max(1, (state.stats.pathsCount || 10) - item.count);
-          state.stats.colorsCount = Math.max(1, (state.stats.colorsCount || 2) - 1);
-          updateStatsUI();
+        if (state.palette) {
+          state.palette = state.palette.filter((p) => p.hex.toLowerCase() !== item.hex.toLowerCase());
+          if (state.stats) {
+            state.stats.colorsCount = state.palette.length;
+            updateStatsUI();
+          }
+          renderPaletteBar(state.palette);
         }
       });
 
-      // Recolor: Click pill to open native color picker
+      // Recolor / Merge: Click pill to open Vector Magic Color Action Modal
       pill.addEventListener('click', () => {
-        const colorInput = document.createElement('input');
-        colorInput.type = 'color';
-        colorInput.value = item.hex.length === 7 ? item.hex : '#ffffff';
-        colorInput.style.position = 'fixed';
-        colorInput.style.opacity = '0';
-        document.body.appendChild(colorInput);
-        colorInput.click();
-
-        colorInput.addEventListener('change', () => {
-          const newColor = colorInput.value.toUpperCase();
-          state.svgString = engine.recolorClient({ [item.hex]: newColor });
-          renderVectorPreview();
-          pill.querySelector('.swatch-color-box').style.backgroundColor = newColor;
-          pill.querySelector('.swatch-hex').textContent = newColor;
-          item.hex = newColor;
-          document.body.removeChild(colorInput);
-        });
+        openColorActionModal(item.hex);
       });
 
       DOM.studioSwatchesRow.appendChild(pill);
     });
+  }
+
+  /**
+   * Vector Magic Interactive Color Action / Merging Modal
+   */
+  let activeModalHex = null;
+
+  function setupColorActionModal() {
+    const modalOverlay = document.getElementById('color-action-modal-overlay');
+    const modalClose = document.getElementById('modal-color-close');
+    const pickerInput = document.getElementById('modal-color-picker-input');
+    const hexInput = document.getElementById('modal-color-hex-input');
+    const btnApplyRecolor = document.getElementById('modal-btn-apply-recolor');
+    const mergeSelect = document.getElementById('modal-merge-select');
+    const btnMerge = document.getElementById('modal-btn-merge');
+    const btnRemoveColor = document.getElementById('modal-btn-remove-color');
+    const previewPill = document.getElementById('modal-color-preview');
+
+    if (!modalOverlay) return;
+
+    function closeModal() {
+      modalOverlay.style.display = 'none';
+      activeModalHex = null;
+    }
+
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+
+    if (pickerInput && hexInput) {
+      pickerInput.addEventListener('input', () => {
+        const col = pickerInput.value.toUpperCase();
+        hexInput.value = col;
+        if (previewPill) previewPill.style.backgroundColor = col;
+      });
+
+      hexInput.addEventListener('input', () => {
+        let val = hexInput.value.trim().toUpperCase();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+          pickerInput.value = val;
+          if (previewPill) previewPill.style.backgroundColor = val;
+        }
+      });
+    }
+
+    if (btnApplyRecolor) {
+      btnApplyRecolor.addEventListener('click', () => {
+        if (!activeModalHex || !state.svgString) return;
+        let newHex = hexInput.value.trim().toUpperCase();
+        if (!newHex.startsWith('#')) newHex = '#' + newHex;
+        if (!/^#[0-9A-F]{6}$/i.test(newHex)) return;
+
+        state.svgString = engine.recolorClient({ [activeModalHex]: newHex });
+        renderVectorPreview();
+
+        if (state.palette) {
+          const item = state.palette.find(p => p.hex.toLowerCase() === activeModalHex.toLowerCase());
+          if (item) item.hex = newHex;
+          renderPaletteBar(state.palette);
+        }
+        closeModal();
+      });
+    }
+
+    if (btnMerge) {
+      btnMerge.addEventListener('click', () => {
+        if (!activeModalHex || !state.svgString || !mergeSelect) return;
+        const targetHex = mergeSelect.value;
+        if (!targetHex || targetHex.toLowerCase() === activeModalHex.toLowerCase()) return;
+
+        state.svgString = engine.recolorClient({ [activeModalHex]: targetHex });
+        renderVectorPreview();
+
+        if (state.palette) {
+          const srcItem = state.palette.find(p => p.hex.toLowerCase() === activeModalHex.toLowerCase());
+          const tgtItem = state.palette.find(p => p.hex.toLowerCase() === targetHex.toLowerCase());
+          if (srcItem && tgtItem) {
+            tgtItem.percentage = (parseFloat(tgtItem.percentage || 0) + parseFloat(srcItem.percentage || 0)).toFixed(1);
+            state.palette = state.palette.filter(p => p.hex.toLowerCase() !== activeModalHex.toLowerCase());
+          }
+          if (state.stats) {
+            state.stats.colorsCount = state.palette.length;
+            updateStatsUI();
+          }
+          renderPaletteBar(state.palette);
+        }
+        closeModal();
+      });
+    }
+
+    if (btnRemoveColor) {
+      btnRemoveColor.addEventListener('click', () => {
+        if (!activeModalHex || !state.svgString) return;
+        state.svgString = engine.recolorClient({ [activeModalHex]: 'transparent' });
+        renderVectorPreview();
+
+        if (state.palette) {
+          state.palette = state.palette.filter(p => p.hex.toLowerCase() !== activeModalHex.toLowerCase());
+          if (state.stats) {
+            state.stats.colorsCount = state.palette.length;
+            updateStatsUI();
+          }
+          renderPaletteBar(state.palette);
+        }
+        closeModal();
+      });
+    }
+  }
+
+  function openColorActionModal(hex) {
+    const modalOverlay = document.getElementById('color-action-modal-overlay');
+    const previewPill = document.getElementById('modal-color-preview');
+    const titleEl = document.getElementById('modal-color-title');
+    const pickerInput = document.getElementById('modal-color-picker-input');
+    const hexInput = document.getElementById('modal-color-hex-input');
+    const mergeSelect = document.getElementById('modal-merge-select');
+    const btnMerge = document.getElementById('modal-btn-merge');
+
+    if (!modalOverlay) return;
+    activeModalHex = hex.toUpperCase();
+
+    if (previewPill) previewPill.style.backgroundColor = activeModalHex;
+    if (titleEl) titleEl.textContent = `Color: ${activeModalHex}`;
+    if (pickerInput) pickerInput.value = activeModalHex.length === 7 ? activeModalHex : '#000000';
+    if (hexInput) hexInput.value = activeModalHex;
+
+    if (mergeSelect) {
+      mergeSelect.innerHTML = '';
+      const otherColors = (state.palette || []).filter(p => p.hex.toUpperCase() !== activeModalHex);
+      if (otherColors.length > 0) {
+        otherColors.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.hex.toUpperCase();
+          opt.textContent = `${c.hex.toUpperCase()} (${c.percentage}%)`;
+          mergeSelect.appendChild(opt);
+        });
+        if (btnMerge) {
+          btnMerge.disabled = false;
+          btnMerge.style.opacity = '1';
+          btnMerge.style.cursor = 'pointer';
+        }
+      } else {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No other colors available';
+        mergeSelect.appendChild(opt);
+        if (btnMerge) {
+          btnMerge.disabled = true;
+          btnMerge.style.opacity = '0.5';
+          btnMerge.style.cursor = 'not-allowed';
+        }
+      }
+    }
+
+    modalOverlay.style.display = 'flex';
   }
 
   function updateViewModeDisplay() {
@@ -522,13 +728,18 @@
     }
   }
 
+  let splitRaf = null;
   function setSplitPosition(pos) {
     state.splitPos = Math.max(0, Math.min(100, pos));
-    DOM.splitDivider.style.left = `${state.splitPos}%`;
-    const vectorPane = document.getElementById('pane-vector');
-    if (vectorPane) {
-      vectorPane.style.clipPath = `polygon(${state.splitPos}% 0, 100% 0, 100% 100%, ${state.splitPos}% 100%)`;
-    }
+    if (splitRaf) return;
+    splitRaf = requestAnimationFrame(() => {
+      DOM.splitDivider.style.left = `${state.splitPos}%`;
+      const vectorPane = document.getElementById('pane-vector');
+      if (vectorPane) {
+        vectorPane.style.clipPath = `polygon(${state.splitPos}% 0, 100% 0, 100% 100%, ${state.splitPos}% 100%)`;
+      }
+      splitRaf = null;
+    });
   }
 
   /**
@@ -619,15 +830,28 @@
       DOM.canvasContainer.classList.remove('panning');
     });
 
-    // 1-Click Transparent vs Studio White Canvas Toggle Button
+    // 1-Click Transparent vs Studio Slate Canvas Toggle Button
     const btnToggleBg = document.getElementById('btn-toggle-bg-canvas');
     if (btnToggleBg) {
       btnToggleBg.addEventListener('click', () => {
         state.transparentBg = !state.transparentBg;
         btnToggleBg.classList.toggle('active', state.transparentBg);
-        btnToggleBg.innerHTML = state.transparentBg ? '☀️ Studio White BG' : '🏁 Transparent Canvas';
+        btnToggleBg.innerHTML = state.transparentBg ? '☀️ Studio Slate BG' : '🏁 Transparent Canvas';
         if (DOM.canvasContainer) {
-          DOM.canvasContainer.classList.toggle('studio-white', !state.transparentBg);
+          DOM.canvasContainer.classList.toggle('checkerboard', state.transparentBg);
+          DOM.canvasContainer.classList.toggle('transparent-mode', state.transparentBg);
+        }
+      });
+    }
+
+    // Top-Level Instant Quick Download SVG Button
+    const btnTopQuickSvg = document.getElementById('btn-top-quick-svg');
+    if (btnTopQuickSvg) {
+      btnTopQuickSvg.addEventListener('click', () => {
+        if (DOM.dlVectorStd) {
+          DOM.dlVectorStd.click();
+        } else {
+          downloadFile('svg');
         }
       });
     }
@@ -643,12 +867,30 @@
         renderVectorPreview();
       });
     });
+
+    // Deep Zoom Presets (Fit, 100%, 200%, 400%, 800%)
+    document.querySelectorAll('.zoom-preset-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.zoom;
+        if (val === 'fit') {
+          resetZoomAndPan();
+        } else {
+          const targetZoom = parseFloat(val);
+          state.zoom = targetZoom;
+          state.pan = { x: 0, y: 0 };
+          DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
+          applyTransform();
+        }
+        updateZoomPresetButtons();
+      });
+    });
   }
 
   function changeZoom(factor) {
     state.zoom = Math.max(0.15, Math.min(32, state.zoom * factor));
     DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
     applyTransform();
+    updateZoomPresetButtons();
   }
 
   function resetZoomAndPan() {
@@ -658,17 +900,35 @@
     DOM.zoomLevelText.textContent = `${Math.round(state.zoom * 100)}%`;
     applyTransform();
     setSplitPosition(50);
+    updateZoomPresetButtons();
   }
 
+  function updateZoomPresetButtons() {
+    const fit = calculateFitZoom();
+    document.querySelectorAll('.zoom-preset-btn').forEach((btn) => {
+      const val = btn.dataset.zoom;
+      if (val === 'fit') {
+        btn.classList.toggle('active', Math.abs(state.zoom - fit) < 0.05);
+      } else {
+        btn.classList.toggle('active', Math.abs(state.zoom - parseFloat(val)) < 0.05);
+      }
+    });
+  }
+
+  let transformRaf = null;
   function applyTransform() {
-    const stage = document.getElementById('viewer-stage');
-    if (stage) {
-      stage.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
-    }
+    if (transformRaf) return;
+    transformRaf = requestAnimationFrame(() => {
+      const stage = document.getElementById('viewer-stage');
+      if (stage) {
+        stage.style.transform = `translate3d(${state.pan.x}px, ${state.pan.y}px, 0) scale(${state.zoom})`;
+      }
+      transformRaf = null;
+    });
   }
 
   /**
-   * Executive Download Handlers: Standard Vector SVG, 4K Vector SVG, 8K Vector SVG, High-Res PNG Suite (1x, 4K, 8K), EPS, PDF
+   * Executive Download Handlers: Standard Vector SVG, 4K Vector SVG, 8K Vector SVG, Copy SVG to Clipboard, High-Res PNG Suite (1x, 4K, 8K), EPS, PDF
    */
   function setupDownloadButtons() {
     const getBaseName = () => state.fileName.replace(/\.[^/.]+$/, '');
@@ -695,6 +955,42 @@
       DOM.dlVector8k.addEventListener('click', () => {
         if (!state.svgString) return;
         window.VectorExporters.downloadVectorSVG(state.svgString, `${getBaseName()}-8k.svg`, 7680);
+      });
+    }
+
+    // OPTION 4: 1-Click Copy SVG Code to Clipboard
+    const btnCopySvg = document.getElementById('btn-copy-svg-code');
+    const btnCopySvgText = document.getElementById('btn-copy-svg-text');
+    const btnCopySvgPill = document.getElementById('btn-copy-svg-pill');
+    if (btnCopySvg) {
+      btnCopySvg.addEventListener('click', async () => {
+        if (!state.svgString) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(state.svgString);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = state.svgString;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+
+          btnCopySvg.classList.add('copied');
+          if (btnCopySvgText) btnCopySvgText.textContent = '✓ Copied to Clipboard!';
+          if (btnCopySvgPill) btnCopySvgPill.textContent = 'COPIED!';
+
+          setTimeout(() => {
+            btnCopySvg.classList.remove('copied');
+            if (btnCopySvgText) btnCopySvgText.textContent = 'Copy SVG Code';
+            if (btnCopySvgPill) btnCopySvgPill.textContent = 'CLIPBOARD';
+          }, 2500);
+        } catch (err) {
+          console.error('Failed to copy SVG markup to clipboard:', err);
+        }
       });
     }
 
@@ -905,6 +1201,230 @@
     });
   }
 
+  /**
+   * Vector Magic Studio Controls: Detail Level, Color Mode, Limit Pills, Quick Actions
+   */
+  function setupVectorMagicStudioControls() {
+    // Detail Level: Low | Medium | High
+    const detailBtns = document.querySelectorAll('#vm-detail-group .vm-toggle-btn');
+    detailBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        detailBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.detailLevel = btn.dataset.detail || 'high';
+        if (state.originalImage) {
+          processImageSource(state.originalImage.src, state.fileName);
+        }
+      });
+    });
+
+    // Quick Palette Limit Pills (Auto, 2, 3, 4, 6, 8, 12, 16, 24)
+    const pillBtns = document.querySelectorAll('.vm-pill-color');
+    pillBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        pillBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.colorsLimit = parseInt(btn.dataset.k, 10) || 0;
+        if (state.originalImage) {
+          processImageSource(state.originalImage.src, state.fileName);
+        }
+      });
+    });
+
+    // 1-Click Remove Background
+    const btnQuickRemoveBg = document.getElementById('vm-quick-remove-bg');
+    if (btnQuickRemoveBg) {
+      btnQuickRemoveBg.addEventListener('click', () => {
+        state.transparentBg = !state.transparentBg;
+        btnQuickRemoveBg.classList.toggle('active', state.transparentBg);
+        btnQuickRemoveBg.innerHTML = state.transparentBg
+          ? '<span class="vm-action-icon">✓</span> Transparent'
+          : '<span class="vm-action-icon">✂️</span> Remove Background';
+
+        if (state.svgString) {
+          if (state.transparentBg) {
+            if (!state.rawSvgBeforeBgRemoval) {
+              state.rawSvgBeforeBgRemoval = state.svgString;
+            }
+            let updatedSvg = state.svgString.replace(/<rect id="studio-bg-rect"[^>]*\/>/gi, '');
+            const firstPathMatch = updatedSvg.match(/<path\b[^>]*\bfill="([^"]+)"[^>]*\/?>/i);
+            if (firstPathMatch) {
+              const bgHex = firstPathMatch[1];
+              if (bgHex && bgHex.toLowerCase() !== 'none' && bgHex.toLowerCase() !== 'transparent') {
+                updatedSvg = engine.recolorClient({ [bgHex]: 'transparent' });
+              }
+            }
+            state.svgString = updatedSvg;
+            if (DOM.canvasContainer) {
+              DOM.canvasContainer.classList.add('checkerboard', 'transparent-mode');
+            }
+          } else {
+            if (state.rawSvgBeforeBgRemoval) {
+              state.svgString = state.rawSvgBeforeBgRemoval;
+              state.rawSvgBeforeBgRemoval = null;
+            }
+            if (DOM.canvasContainer) {
+              DOM.canvasContainer.classList.remove('checkerboard', 'transparent-mode');
+            }
+          }
+          renderVectorPreview();
+        }
+      });
+    }
+
+    // Quick Update Vector / Re-trace
+    const btnQuickRetrace = document.getElementById('vm-quick-retrace');
+    if (btnQuickRetrace) {
+      btnQuickRetrace.addEventListener('click', () => {
+        if (state.originalImage) {
+          processImageSource(state.originalImage.src, state.fileName);
+        }
+      });
+    }
+
+    // Vector MAX Turbo Re-Trace Button: Allows switching between logo mode and Vector MAX micro-detail mode
+    const btnRetraceMax = document.getElementById('btn-retrace-vector-max');
+    if (btnRetraceMax) {
+      btnRetraceMax.addEventListener('click', () => {
+        if (!state.originalImage) return;
+        if (state.currentPreset === 'vector_max') {
+          state.currentPreset = 'auto';
+        } else {
+          state.currentPreset = 'vector_max';
+        }
+        updateVectorMaxStudioUI();
+        processImageSource(state.originalImage.src, state.fileName);
+      });
+    }
+  }
+
+  function updateVectorMaxStudioUI() {
+    const isMax = (state.currentPreset === 'vector_max');
+    const turboCard = document.getElementById('vm-turbo-max-card');
+    const statusTitle = document.getElementById('vm-turbo-status-title');
+    const statusBadge = document.getElementById('vm-turbo-status-badge');
+    const statusDesc = document.getElementById('vm-turbo-status-desc');
+    const actionTitle = document.getElementById('btn-max-action-title');
+    const actionSub = document.getElementById('btn-max-action-sub');
+    const actionPill = document.getElementById('btn-max-action-pill');
+
+    if (turboCard && statusTitle && actionTitle) {
+      if (isMax) {
+        statusTitle.textContent = 'Vector MAX Active';
+        if (statusBadge) {
+          statusBadge.textContent = 'ACTIVE';
+          statusBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+          statusBadge.style.color = '#34d399';
+          statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+        }
+        if (statusDesc) statusDesc.textContent = 'Rendering with 11,000+ razor-sharp micro-splines and continuous color fidelity.';
+        actionTitle.textContent = 'Switch to Vector Magic (Clean Logo Mode)';
+        if (actionSub) actionSub.textContent = 'Silky continuous splines & discrete brand colors';
+        if (actionPill) actionPill.textContent = 'STANDARD';
+      } else {
+        statusTitle.textContent = 'Need More Detail?';
+        if (statusBadge) {
+          statusBadge.textContent = 'Vector MAX';
+          statusBadge.style.background = 'rgba(249, 115, 22, 0.2)';
+          statusBadge.style.color = '#fb923c';
+          statusBadge.style.borderColor = 'rgba(249, 115, 22, 0.5)';
+        }
+        if (statusDesc) statusDesc.textContent = 'Not satisfied with smooth logo curves? Unlock Vector MAX for complex artworks, paintings, and fine feathers:';
+        actionTitle.textContent = 'Re-Vectorize with Vector MAX';
+        if (actionSub) actionSub.textContent = 'Unlock 11,000+ razor-sharp micro-splines & deep gradients';
+        if (actionPill) actionPill.textContent = 'UPGRADE';
+      }
+    }
+  }
+
+  /**
+   * Dual Engine Mode Tabs (Vector Magic vs Vector MAX) on Hero
+   */
+  function setupEngineModeTabs() {
+    const tabMagic = document.getElementById('tab-engine-magic');
+    const tabMax = document.getElementById('tab-engine-max');
+    const uploadBtnText = document.getElementById('upload-btn-text');
+    const dropzoneMain = document.getElementById('dropzone-text-main');
+    const dropzoneMeta = document.getElementById('dropzone-meta');
+
+    if (!tabMagic || !tabMax) return;
+
+    tabMagic.addEventListener('click', () => {
+      tabMagic.classList.add('active');
+      tabMax.classList.remove('active');
+      state.currentPreset = 'auto';
+      if (uploadBtnText) uploadBtnText.textContent = 'Vectorize Image Now';
+      if (dropzoneMain) dropzoneMain.textContent = 'Drag & drop an image here to vectorize';
+      if (dropzoneMeta) dropzoneMeta.textContent = 'Vector Magic Sub-Pixel Precision • Clean Brand Colors • 100% Free';
+    });
+
+    tabMax.addEventListener('click', () => {
+      tabMax.classList.add('active');
+      tabMagic.classList.remove('active');
+      state.currentPreset = 'vector_max';
+      if (uploadBtnText) uploadBtnText.textContent = '🔥 Vectorize with Vector MAX';
+      if (dropzoneMain) dropzoneMain.textContent = 'Drag & drop complex artwork or photo for Vector MAX';
+      if (dropzoneMeta) dropzoneMeta.textContent = 'Vector MAX™ Engine • 3,000+ to 5,000+ Micro-Splines & Gradients • 100% Free';
+    });
+  }
+
+  /**
+   * Dedicated Vector MAX Section with Separate Upload Dropzone
+   */
+  function setupVectorMaxSectionUpload() {
+    const vmaxDropZone = document.getElementById('vmax-drop-zone');
+    const vmaxFileInput = document.getElementById('vmax-file-input');
+    const btnVmaxUpload = document.getElementById('btn-vmax-upload');
+    const vmaxSampleOwl = document.getElementById('vmax-sample-owl');
+
+    if (btnVmaxUpload && vmaxFileInput) {
+      btnVmaxUpload.addEventListener('click', () => {
+        vmaxFileInput.click();
+      });
+
+      vmaxFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          state.currentPreset = 'vector_max';
+          handleFileSelect(e.target.files[0], 'vector-max-artwork.png');
+        }
+      });
+    }
+
+    if (vmaxDropZone) {
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        vmaxDropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          vmaxDropZone.classList.add('dragover');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((eventName) => {
+        vmaxDropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          vmaxDropZone.classList.remove('dragover');
+        });
+      });
+
+      vmaxDropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt.files && dt.files[0]) {
+          state.currentPreset = 'vector_max';
+          handleFileSelect(dt.files[0], 'vector-max-artwork.png');
+        }
+      });
+    }
+
+    if (vmaxSampleOwl) {
+      vmaxSampleOwl.addEventListener('click', () => {
+        state.currentPreset = 'vector_max';
+        const dataUrl = window.SampleGenerator.createOwlSample();
+        processImageSource(dataUrl, 'Rainbow_Owl_Vector_MAX.png');
+      });
+    }
+  }
+
   function setupHeroSlider() {
     const heroSlider = document.getElementById('hero-compare-range');
     const heroVectorPane = document.getElementById('hero-vector-pane');
@@ -917,11 +1437,109 @@
     }
   }
 
+  /**
+   * Vector Magic Interactive Comparison Gallery Sliders
+   * Controls the 3 split-cards on the homepage (Logos, Mascots, Photos)
+   */
+  function setupVectorMagicGallerySliders() {
+    document.querySelectorAll('.vm-card-slider').forEach((slider) => {
+      const cardNum = slider.dataset.card;
+      const pane = document.getElementById(`vm-pane-${cardNum}`);
+      const divider = document.getElementById(`vm-divider-${cardNum}`);
+      if (pane && divider) {
+        slider.addEventListener('input', (e) => {
+          const val = e.target.value;
+          pane.style.clipPath = `polygon(${val}% 0, 100% 0, 100% 100%, ${val}% 100%)`;
+          divider.style.left = `${val}%`;
+        });
+      }
+    });
+  }
+
+  /**
+   * Vector Magic 3-Step Wizard Navigation Bar
+   */
+  function setupWizardBar() {
+    const step1 = document.getElementById('wizard-step-1');
+    const step2 = document.getElementById('wizard-step-2');
+    const step3 = document.getElementById('wizard-step-3');
+
+    if (step1) {
+      step1.addEventListener('click', () => {
+        showScreen('hero');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    if (step2) {
+      step2.addEventListener('click', () => {
+        if (state.svgString) {
+          showScreen('result');
+          const canvasEl = document.getElementById('canvas-container');
+          if (canvasEl) canvasEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          showScreen('hero');
+          DOM.fileInput.click();
+        }
+      });
+    }
+
+    if (step3) {
+      step3.addEventListener('click', () => {
+        if (state.svgString) {
+          showScreen('result');
+          const dlPanel = document.querySelector('.download-panel');
+          if (dlPanel) dlPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          showScreen('hero');
+          DOM.fileInput.click();
+        }
+      });
+    }
+  }
+
+  function updateWizardState(screenName) {
+    const step1 = document.getElementById('wizard-step-1');
+    const step2 = document.getElementById('wizard-step-2');
+    const step3 = document.getElementById('wizard-step-3');
+    if (!step1 || !step2 || !step3) return;
+
+    step1.classList.remove('active', 'completed');
+    step2.classList.remove('active', 'completed');
+    step3.classList.remove('active', 'completed');
+
+    const circle1 = step1.querySelector('.vm-step-circle');
+    const circle2 = step2.querySelector('.vm-step-circle');
+    const circle3 = step3.querySelector('.vm-step-circle');
+
+    if (screenName === 'hero') {
+      step1.classList.add('active');
+      if (circle1) circle1.textContent = '1';
+      if (circle2) circle2.textContent = '2';
+      if (circle3) circle3.textContent = '3';
+    } else if (screenName === 'processing') {
+      step1.classList.add('completed');
+      if (circle1) circle1.textContent = '✓';
+      step2.classList.add('active');
+      if (circle2) circle2.textContent = '2';
+      if (circle3) circle3.textContent = '3';
+    } else if (screenName === 'result') {
+      step1.classList.add('completed');
+      if (circle1) circle1.textContent = '✓';
+      step2.classList.add('active');
+      if (circle2) circle2.textContent = '2';
+      step3.classList.add('active');
+      if (circle3) circle3.textContent = '3';
+    }
+  }
+
   function showScreen(screenName) {
     state.screen = screenName;
     DOM.heroSection.style.display = screenName === 'hero' ? 'block' : 'none';
     DOM.processingSection.style.display = screenName === 'processing' ? 'flex' : 'none';
     DOM.resultSection.style.display = screenName === 'result' ? 'block' : 'none';
+
+    updateWizardState(screenName);
 
     if (screenName === 'result') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
