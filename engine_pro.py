@@ -730,20 +730,20 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         if detail_level == 'low':
             sigma_base = 2.4
             corner_threshold = int(options.get('corner_threshold', 85))
-            length_threshold = float(options.get('length_threshold', 3.2))
+            length_threshold = float(options.get('length_threshold', 4.0))
             filter_speckle = int(options.get('filter_speckle', 6))
             max_iterations = int(options.get('max_iterations', 50))
         elif detail_level == 'medium':
-            sigma_base = 1.8
-            corner_threshold = int(options.get('corner_threshold', 84))
-            length_threshold = float(options.get('length_threshold', 3.0))
-            filter_speckle = int(options.get('filter_speckle', 4))
-            max_iterations = int(options.get('max_iterations', 60))
-        else: # high (default) - needle-sharp corner vertices with silky continuous curves
-            sigma_base = 1.2
+            sigma_base = 2.0
             corner_threshold = int(options.get('corner_threshold', 82))
-            length_threshold = float(options.get('length_threshold', 2.8))
-            filter_speckle = int(options.get('filter_speckle', 3))
+            length_threshold = float(options.get('length_threshold', 3.8))
+            filter_speckle = int(options.get('filter_speckle', 5))
+            max_iterations = int(options.get('max_iterations', 60))
+        else: # high (default) - Vector Magic sub-pixel silky curves with sharp corner vertices
+            sigma_base = 1.6
+            corner_threshold = int(options.get('corner_threshold', 80))
+            length_threshold = float(options.get('length_threshold', 3.5))
+            filter_speckle = int(options.get('filter_speckle', 4))
             max_iterations = int(options.get('max_iterations', 65))
 
         for k in range(K):
@@ -753,18 +753,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         if is_true_dark_outline:
             probs[:, :, dark_idx] *= 1.25
 
-        # High-curvature & fine-detail preservation:
-        # Don't let blur override sharp text or acute corners
-        sharp_labels = np.argmin(dists, axis=-1)
-        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-        sobelx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
-        sobely = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
-        grad_mag = np.sqrt(sobelx**2 + sobely**2)
-        sharp_mask = grad_mag > 115.0
-
         labels = np.argmax(probs, axis=-1)
-        labels[sharp_mask] = sharp_labels[sharp_mask]
-
         clean_rgb = palette_rgb[labels].astype(np.uint8)
         color_precision = int(options.get('color_precision', 8))
         layer_difference = int(options.get('layer_difference', 16))
@@ -823,15 +812,31 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     # Clean background stripping when transparent_bg is requested or input had native alpha:
     should_strip_bg = bool(transparent_bg or has_native_alpha or options.get('remove_bg', False))
     if should_strip_bg:
+        # Detect true border/corner background color
+        h_arr, w_arr, _ = arr.shape
+        border_sample = np.vstack([
+            arr[:max(2, h_arr // 20), :, :].reshape(-1, 3),
+            arr[-max(2, h_arr // 20):, :, :].reshape(-1, 3),
+            arr[:, :max(2, w_arr // 20), :].reshape(-1, 3),
+            arr[:, -max(2, w_arr // 20):, :].reshape(-1, 3)
+        ])
+        bg_rgb = np.median(border_sample, axis=0)
+
+        # 1. Remove background rect if present
+        svg_content = re.sub(r'<rect\b[^>]*id="studio-bg-rect"[^>]*\/?>', '', svg_content, flags=re.IGNORECASE)
+
+        # 2. In stacked mode, the first path is always the canvas base layer
         first_path = re.search(r'<path\b[^>]*\bfill="([^"]+)"[^>]*\/?>', svg_content, re.IGNORECASE)
         if first_path:
             fill_c = first_path.group(1).upper()
-            is_light_bg = fill_c in (
-                '#FFFFFF', '#FEFEFE', '#FDFDFD', '#FCFCFC', '#FBFBFB', '#FAFAFA',
-                '#F9F9F9', '#F8F8F8', '#F7F7F7', '#F6F6F6', '#F5F5F5', '#F4F4F4',
-                '#F3F3F3', '#F2F2F2', '#F1F1F1', '#F0F0F0', '#EDEDED', '#EAEAEA'
-            )
-            if has_native_alpha or is_light_bg or transparent_bg:
+            if fill_c.startswith('#') and len(fill_c) == 7:
+                c_rgb = np.array(hex2rgb(fill_c), dtype=np.float32)
+                dist_bg = np.linalg.norm(c_rgb - bg_rgb)
+            else:
+                dist_bg = 0.0
+
+            # If the first path matches the border background, or if user explicitly requested transparency:
+            if dist_bg < 75.0 or transparent_bg or has_native_alpha:
                 svg_content = svg_content[:first_path.start()] + svg_content[first_path.end():]
 
     svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="{tw}" height="{th}" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'

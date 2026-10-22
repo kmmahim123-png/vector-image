@@ -52,6 +52,14 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(b"google.com, pub-4491918633486621, DIRECT, f08c47fec0942fa0\n")
             return
 
+        if clean_path.endswith('/google45864f6e1c3edba4.html') or clean_path == '/google45864f6e1c3edba4.html':
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b"google-site-verification: google45864f6e1c3edba4.html")
+            return
+
         self.send_response(404)
         self._send_cors_headers()
         self.end_headers()
