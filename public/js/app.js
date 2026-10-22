@@ -704,27 +704,31 @@
     const vectorPane = document.getElementById('pane-vector');
     const divider = DOM.splitDivider;
 
-    if (state.viewMode === 'split') {
-      originalPane.style.display = 'block';
-      vectorPane.style.display = 'block';
-      divider.style.display = 'block';
-      setSplitPosition(state.splitPos);
-    } else if (state.viewMode === 'side') {
+    if (state.viewMode === 'side') {
+      DOM.canvasContainer.classList.add('view-mode-side');
       originalPane.style.display = 'block';
       vectorPane.style.display = 'block';
       divider.style.display = 'none';
       originalPane.style.clipPath = 'none';
       vectorPane.style.clipPath = 'none';
-    } else if (state.viewMode === 'vector' || state.viewMode === 'wireframe') {
-      originalPane.style.display = 'none';
-      vectorPane.style.display = 'block';
-      divider.style.display = 'none';
-      vectorPane.style.clipPath = 'none';
-    } else if (state.viewMode === 'original') {
-      originalPane.style.display = 'block';
-      vectorPane.style.display = 'none';
-      divider.style.display = 'none';
-      originalPane.style.clipPath = 'none';
+    } else {
+      DOM.canvasContainer.classList.remove('view-mode-side');
+      if (state.viewMode === 'split') {
+        originalPane.style.display = 'block';
+        vectorPane.style.display = 'block';
+        divider.style.display = 'block';
+        setSplitPosition(state.splitPos);
+      } else if (state.viewMode === 'vector' || state.viewMode === 'wireframe') {
+        originalPane.style.display = 'none';
+        vectorPane.style.display = 'block';
+        divider.style.display = 'none';
+        vectorPane.style.clipPath = 'none';
+      } else if (state.viewMode === 'original') {
+        originalPane.style.display = 'block';
+        vectorPane.style.display = 'none';
+        divider.style.display = 'none';
+        originalPane.style.clipPath = 'none';
+      }
     }
   }
 
@@ -801,13 +805,20 @@
       }, { passive: true });
     }
 
-    // Touchscreen Support for Canvas Panning (1-finger drag)
+    if (DOM.splitDivider) {
+      DOM.splitDivider.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        state.isDraggingSplit = true;
+      }, { passive: true });
+    }
+
+    // Touchscreen Support: Smart gesture detection (prevents scroll locking on mobile)
+    let touchStartClient = null;
     DOM.canvasContainer.addEventListener('touchstart', (e) => {
       if (e.target.closest('#split-handle') || e.target.closest('#split-divider')) return;
       if (e.touches.length === 1) {
-        state.isPanning = true;
+        touchStartClient = { x: e.touches[0].clientX, y: e.touches[0].clientY };
         state.panStart = { x: e.touches[0].clientX - state.pan.x, y: e.touches[0].clientY - state.pan.y };
-        DOM.canvasContainer.classList.add('panning');
       }
     }, { passive: true });
 
@@ -817,16 +828,32 @@
         const x = e.touches[0].clientX - rect.left;
         const pct = (x / rect.width) * 100;
         setSplitPosition(pct);
-      } else if (state.isPanning && e.touches.length === 1) {
-        state.pan.x = e.touches[0].clientX - state.panStart.x;
-        state.pan.y = e.touches[0].clientY - state.panStart.y;
-        applyTransform();
+      } else if (touchStartClient && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - touchStartClient.x;
+        const dy = e.touches[0].clientY - touchStartClient.y;
+        
+        // If zoomed in, pan freely
+        if (state.zoom > 1.05) {
+          state.isPanning = true;
+          DOM.canvasContainer.classList.add('panning');
+          state.pan.x = e.touches[0].clientX - state.panStart.x;
+          state.pan.y = e.touches[0].clientY - state.panStart.y;
+          applyTransform();
+        } else if (state.viewMode === 'split' && Math.abs(dx) > Math.abs(dy) + 8) {
+          // Horizontal swipe in split mode adjusts the split divider!
+          const rect = DOM.canvasContainer.getBoundingClientRect();
+          const x = e.touches[0].clientX - rect.left;
+          const pct = (x / rect.width) * 100;
+          setSplitPosition(pct);
+        }
+        // If vertical swipe (|dy| > |dx|), do nothing so browser scrolls page smoothly!
       }
     }, { passive: true });
 
     window.addEventListener('touchend', () => {
       state.isPanning = false;
       state.isDraggingSplit = false;
+      touchStartClient = null;
       DOM.canvasContainer.classList.remove('panning');
     });
 

@@ -736,29 +736,39 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
             probs[:, :, dark_idx] = cv2.morphologyEx(probs[:, :, dark_idx], cv2.MORPH_CLOSE, kernel)
 
+        # Adaptive Corner-Preserving Regularization:
+        # Detect corner vertices so acute points, stars, and letterforms stay 100% sharp while smooth curves are regularized
+        gray_work = cv2.cvtColor(unsharp_arr, cv2.COLOR_RGB2GRAY)
+        harris = cv2.cornerHarris(gray_work, 2, 3, 0.04)
+        corner_mask = (harris > 0.012 * harris.max())
+        kernel_c = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        corner_mask = cv2.dilate(corner_mask.astype(np.uint8), kernel_c).astype(bool)
+
         # Vector Magic Studio Detail Level Override:
         if detail_level == 'low':
-            sigma_base = 2.4
-            corner_threshold = int(options.get('corner_threshold', 85))
-            length_threshold = float(options.get('length_threshold', 4.0))
-            filter_speckle = int(options.get('filter_speckle', 6))
-            max_iterations = int(options.get('max_iterations', 50))
-        elif detail_level == 'medium':
-            sigma_base = 2.0
-            corner_threshold = int(options.get('corner_threshold', 82))
-            length_threshold = float(options.get('length_threshold', 3.8))
-            filter_speckle = int(options.get('filter_speckle', 5))
-            max_iterations = int(options.get('max_iterations', 60))
-        else: # high (default) - Vector Magic sub-pixel silky curves with sharp corner vertices
-            sigma_base = 1.6
-            corner_threshold = int(options.get('corner_threshold', 80))
-            length_threshold = float(options.get('length_threshold', 3.5))
+            sigma_base = 1.8
+            corner_threshold = int(options.get('corner_threshold', 70))
+            length_threshold = float(options.get('length_threshold', 3.2))
             filter_speckle = int(options.get('filter_speckle', 4))
+            max_iterations = int(options.get('max_iterations', 55))
+        elif detail_level == 'medium':
+            sigma_base = 1.4
+            corner_threshold = int(options.get('corner_threshold', 62))
+            length_threshold = float(options.get('length_threshold', 2.6))
+            filter_speckle = int(options.get('filter_speckle', 3))
             max_iterations = int(options.get('max_iterations', 65))
+        else: # high (default) - Vector Magic sub-pixel silky curves with razor-sharp corner vertices
+            sigma_base = 1.15
+            corner_threshold = int(options.get('corner_threshold', 55))
+            length_threshold = float(options.get('length_threshold', 2.2))
+            filter_speckle = int(options.get('filter_speckle', 2))
+            max_iterations = int(options.get('max_iterations', 75))
 
         for k in range(K):
-            s_k = sigma_base * 0.85 if (is_true_dark_outline and k == dark_idx) else sigma_base
-            probs[:, :, k] = cv2.GaussianBlur(probs[:, :, k], (0, 0), s_k)
+            s_k = sigma_base * 0.80 if (is_true_dark_outline and k == dark_idx) else sigma_base
+            blurred_k = cv2.GaussianBlur(probs[:, :, k], (0, 0), s_k)
+            # Corner preservation: blend back sharp probabilities at corner locations
+            probs[:, :, k] = np.where(corner_mask, probs[:, :, k] * 0.70 + blurred_k * 0.30, blurred_k)
 
         if is_true_dark_outline:
             probs[:, :, dark_idx] *= 1.25
@@ -767,7 +777,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         clean_rgb = palette_rgb[labels].astype(np.uint8)
         color_precision = int(options.get('color_precision', 8))
         layer_difference = int(options.get('layer_difference', 16))
-        splice_threshold = int(options.get('splice_threshold', 60))
+        splice_threshold = int(options.get('splice_threshold', 55))
         path_precision = int(options.get('path_precision', 3))
     else:
         # Photographic / complex artwork raster path

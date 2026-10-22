@@ -816,6 +816,52 @@ kbd {
   stroke-width: 0.8px !important;
 }
 
+/* Side by Side Mode */
+.view-mode-side #viewer-stage {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 24px !important;
+  width: max-content !important;
+}
+
+.view-mode-side .pane-layer {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111827;
+}
+
+.pane-badge-label {
+  display: none;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  color: #38bdf8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  z-index: 10;
+  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.view-mode-side .pane-badge-label {
+  display: block;
+}
+
 /* Split Handle */
 .split-divider {
   position: absolute;
@@ -824,8 +870,21 @@ kbd {
   width: 2px;
   background: var(--fv-cyan);
   box-shadow: 0 0 12px var(--fv-cyan);
-  pointer-events: none;
+  pointer-events: auto;
+  touch-action: none;
   z-index: 20;
+}
+
+.split-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -24px;
+  width: 50px;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
 }
 
 .split-handle {
@@ -843,6 +902,7 @@ kbd {
   box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
   cursor: ew-resize;
   pointer-events: auto;
+  touch-action: none;
   color: white;
   font-size: 0.9rem;
   font-weight: bold;
@@ -2386,14 +2446,19 @@ input[type="range"] {
 
   /* Canvas Viewport on Mobile */
   .canvas-viewport {
-    height: 360px !important;
-    touch-action: none;
+    height: 380px !important;
+    touch-action: pan-y; /* Fluid page scrolling without trapping touch */
+  }
+  .view-mode-side #viewer-stage {
+    flex-direction: column !important;
+    gap: 16px !important;
   }
   .split-handle {
     width: 44px;
     height: 44px; /* Large 44px touch target matching Apple Human Interface Guidelines */
-    font-size: 1rem;
-    box-shadow: 0 0 20px rgba(6, 182, 212, 0.8);
+    font-size: 1.1rem;
+    box-shadow: 0 0 24px rgba(6, 182, 212, 0.85);
+    touch-action: none;
   }
 
   /* Canvas Footer */
