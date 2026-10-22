@@ -2412,6 +2412,10 @@ input[type="range"] {
   /* Download Suite on Mobile */
   .download-panel {
     gap: 1.15rem;
+    max-height: none !important;
+    overflow-y: visible !important;
+    padding-right: 0 !important;
+    padding-bottom: 2rem !important;
   }
   .download-title-wrapper {
     flex-direction: column;

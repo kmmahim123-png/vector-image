@@ -225,7 +225,7 @@ def _safe_vtracer_fallback(input_path, output_svg_path, options):
         with open(output_svg_path, 'r', encoding='utf-8', errors='ignore') as f:
             svg_content = f.read()
 
-        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision">'
+        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision">'
         svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
 
         with open(output_svg_path, 'w', encoding='utf-8') as f:
@@ -546,7 +546,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     preset = options.get('preset', 'auto')
     is_vector_max = bool(preset == 'vector_max' or options.get('mode') == 'vector_max' or preset in ('max', 'ultra', 'detailed_photo'))
     is_mono = is_monochrome_image(orig_img)
-    is_line_art = (is_mono and preset not in ('detailed', 'photo', 'illustration', 'color', 'vector_max')) or preset in ('cut_vinyl', 'silhouette', 'line_art')
+    is_line_art = bool(preset in ('cut_vinyl', 'silhouette', 'line_art'))
 
     if is_vector_max:
         is_logo = False
@@ -634,7 +634,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
         with open(output_svg_path, 'r', encoding='utf-8', errors='ignore') as f:
             svg_content = f.read()
 
-        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
+        svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="{tw}" height="{th}" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
         if not transparent_bg:
             svg_root += f'\n<rect id="studio-bg-rect" width="100%" height="100%" fill="#ffffff"/>'
         svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
@@ -834,7 +834,7 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
             if has_native_alpha or is_light_bg or transparent_bg:
                 svg_content = svg_content[:first_path.start()] + svg_content[first_path.end():]
 
-    svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
+    svg_root = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {tw} {th}" width="{tw}" height="{th}" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" style="stroke-linejoin:round;stroke-linecap:round;">'
     svg_content = re.sub(r'<svg\b[^>]*>', svg_root, svg_content, count=1)
 
     # Extract true palette directly from the SVG paths
