@@ -672,20 +672,26 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
     # Transforms discrete pixel staircase noise into silky continuous Bézier splines
     use_vm_regularization = bool(not is_vector_max and (is_logo or len(palette_rgb) <= 24 or preset in ('auto', 'logo', 'clipart', 'badge')))
     if is_vector_max:
-        # Vector MAX: Ultra-Fine Art & Photography micro-spline tracing
-        smooth_bgr = cv2.bilateralFilter(bgr, 5, 28, 22)
-        filter_speckle = int(options.get('filter_speckle', 4))
-        color_precision = int(options.get('color_precision', 6))
-        layer_difference = int(options.get('layer_difference', 16))
-        corner_threshold = int(options.get('corner_threshold', 68))
-        length_threshold = float(options.get('length_threshold', 3.8))
-        max_iterations = int(options.get('max_iterations', 35))
-        splice_threshold = int(options.get('splice_threshold', 55))
-        path_precision = int(options.get('path_precision', 2))
-        clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
+        # Vector MAX: Ultra-Fine Art & Photography micro-spline tracing with unsharp contrast pre-enhancement
+        blur_bgr = cv2.GaussianBlur(bgr, (0, 0), 1.0)
+        sharp_bgr = np.clip(cv2.addWeighted(bgr.astype(np.float32), 1.35, blur_bgr.astype(np.float32), -0.35, 0), 0, 255).astype(np.uint8)
+        filter_speckle = int(options.get('filter_speckle', 2))
+        color_precision = int(options.get('color_precision', 8))
+        layer_difference = int(options.get('layer_difference', 12))
+        corner_threshold = int(options.get('corner_threshold', 65))
+        length_threshold = float(options.get('length_threshold', 2.2))
+        max_iterations = int(options.get('max_iterations', 45))
+        splice_threshold = int(options.get('splice_threshold', 50))
+        path_precision = int(options.get('path_precision', 3))
+        clean_rgb = cv2.cvtColor(sharp_bgr, cv2.COLOR_BGR2RGB)
     elif use_vm_regularization:
+        # High-Fidelity Edge Regularization:
+        # Pre-sharpen color transitions so corner vertices and acute angles stay crisp while curves are regularized
+        blur_arr = cv2.GaussianBlur(arr, (0, 0), 1.0)
+        unsharp_arr = np.clip(cv2.addWeighted(arr.astype(np.float32), 1.25, blur_arr.astype(np.float32), -0.25, 0), 0, 255).astype(np.uint8)
+
         K = len(palette_rgb)
-        pixels = arr.astype(np.float32)
+        pixels = unsharp_arr.astype(np.float32)
         palette_f = palette_rgb.astype(np.float32)
         dists = np.linalg.norm(pixels[:, :, None, :] - palette_f[None, None, :, :], axis=-1)
         inv_dists = np.exp(-dists / 28.0)
@@ -700,23 +706,23 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
         # Vector Magic Studio Detail Level Override:
         if detail_level == 'low':
-            sigma_base = 3.6
-            corner_threshold = 85
-            length_threshold = 3.5
-            filter_speckle = 8
-            max_iterations = 50
-        elif detail_level == 'medium':
-            sigma_base = 3.0
-            corner_threshold = 80
-            length_threshold = 3.5
-            filter_speckle = 6
-            max_iterations = 60
-        else: # high (default)
             sigma_base = 2.4
-            corner_threshold = 78
-            length_threshold = 3.5
-            filter_speckle = 4
-            max_iterations = 65
+            corner_threshold = int(options.get('corner_threshold', 85))
+            length_threshold = float(options.get('length_threshold', 3.2))
+            filter_speckle = int(options.get('filter_speckle', 6))
+            max_iterations = int(options.get('max_iterations', 50))
+        elif detail_level == 'medium':
+            sigma_base = 1.8
+            corner_threshold = int(options.get('corner_threshold', 84))
+            length_threshold = float(options.get('length_threshold', 3.0))
+            filter_speckle = int(options.get('filter_speckle', 4))
+            max_iterations = int(options.get('max_iterations', 60))
+        else: # high (default) - needle-sharp corner vertices with silky continuous curves
+            sigma_base = 1.3
+            corner_threshold = int(options.get('corner_threshold', 82))
+            length_threshold = float(options.get('length_threshold', 2.8))
+            filter_speckle = int(options.get('filter_speckle', 3))
+            max_iterations = int(options.get('max_iterations', 65))
 
         for k in range(K):
             s_k = sigma_base * 0.85 if k == dark_idx else sigma_base
@@ -727,21 +733,21 @@ def _vectorize_pro_core(input_path, output_svg_path, options):
 
         labels = np.argmax(probs, axis=-1)
         clean_rgb = palette_rgb[labels].astype(np.uint8)
-        color_precision = 8
-        layer_difference = 16
-        splice_threshold = 60
-        path_precision = 3
+        color_precision = int(options.get('color_precision', 8))
+        layer_difference = int(options.get('layer_difference', 16))
+        splice_threshold = int(options.get('splice_threshold', 60))
+        path_precision = int(options.get('path_precision', 3))
     else:
         # Photographic / complex artwork raster path
         smooth_bgr = cv2.bilateralFilter(bgr, 7, 32, 28)
-        filter_speckle = int(options.get('filter_speckle', 5))
-        color_precision = int(options.get('color_precision', 7))
+        filter_speckle = int(options.get('filter_speckle', 4))
+        color_precision = int(options.get('color_precision', 8))
         layer_difference = int(options.get('layer_difference', 16))
-        corner_threshold = int(options.get('corner_threshold', 60))
-        length_threshold = float(options.get('length_threshold', 5.0))
-        max_iterations = int(options.get('max_iterations', 35))
+        corner_threshold = int(options.get('corner_threshold', 65))
+        length_threshold = float(options.get('length_threshold', 3.8))
+        max_iterations = int(options.get('max_iterations', 40))
         splice_threshold = int(options.get('splice_threshold', 52))
-        path_precision = int(options.get('path_precision', 2))
+        path_precision = int(options.get('path_precision', 3))
         clean_rgb = cv2.cvtColor(smooth_bgr, cv2.COLOR_BGR2RGB)
 
     Image.fromarray(clean_rgb).save(temp_pre)
